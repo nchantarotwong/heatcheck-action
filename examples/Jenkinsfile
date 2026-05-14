@@ -1,0 +1,30 @@
+// Minimal heatcheck stage for a Jenkins declarative pipeline.
+// Drop into the `stages { }` block of your Jenkinsfile.
+//
+// Requires an agent with Docker available (`docker` CLI + daemon).
+// If your agents don't have Docker, swap the docker.image() call for
+// a `sh` step that fetches the binary from the GitHub Release — see
+// docs/non-github-actions.md for the download snippet.
+//
+// Non-zero exit from heatcheck (violations found, exit 1) will fail
+// the stage by default.
+
+pipeline {
+  agent any
+  stages {
+    stage('heatcheck') {
+      steps {
+        script {
+          docker.image('ghcr.io/nchantarotwong/heatcheck:v1').inside("-v ${env.WORKSPACE}:/src") {
+            sh 'heatcheck --json /src > heatcheck.json'
+          }
+        }
+      }
+      post {
+        always {
+          archiveArtifacts artifacts: 'heatcheck.json', allowEmptyArchive: true
+        }
+      }
+    }
+  }
+}

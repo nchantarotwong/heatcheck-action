@@ -1,0 +1,20 @@
+# heatcheck as a pre-commit hook.
+# Drop this entry into your repo's .pre-commit-config.yaml (merging
+# under `repos:` if you already have other hooks).
+#
+# `pass_filenames: false` is intentional — heatcheck reasons across
+# files (provenance tracking through imports and call graph), so it
+# scans the whole tree even when pre-commit only flags a few files
+# as staged. The `types: [python]` clause skips the hook entirely
+# when no Python files changed, so non-Python commits stay fast.
+
+repos:
+  - repo: local
+    hooks:
+      - id: heatcheck
+        name: heatcheck (taint analysis)
+        language: docker_image
+        entry: ghcr.io/nchantarotwong/heatcheck:v1
+        types: [python]
+        pass_filenames: false
+        args: ['--json', '.']

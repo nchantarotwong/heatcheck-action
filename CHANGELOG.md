@@ -11,6 +11,26 @@ Pin to a floating `@v1` for auto-bumps within v1.x, or an immutable
 
 ## [Unreleased]
 
+### Added
+- **Container image** at `ghcr.io/nchantarotwong/heatcheck` — multi-arch
+  (linux/amd64 + linux/arm64), one tag per release (`vX.Y.Z`, plus
+  floating `vX` and `latest` for stable releases). Pinnable by digest
+  for supply-chain-sensitive environments.
+- **`docs/non-github-actions.md`** — guide for GitLab CI, Jenkins,
+  generic Docker, and pre-commit setups using the container or the
+  raw binary release.
+- **`examples/gitlab-ci.yml`**, **`examples/Jenkinsfile`**,
+  **`examples/docker-run.sh`**, **`examples/.pre-commit-config.yaml`** —
+  drop-in snippets matching the per-CI sections in the docs.
+- Top-level README callout pointing non-GHA users at the new docs so
+  the GHA-flavored repo name doesn't gate discovery.
+
+### Forthcoming (tracked, not in this release)
+- **SARIF output** (`heatcheck --sarif`) lands in heatcheck v1.1.0.
+  Once shipped, enables native ingestion in GitLab Ultimate SAST,
+  Azure DevOps, SonarQube, and GitHub Code Scanning. Docs already
+  show the wiring; the flag will exit `2` on v1.0.x.
+
 ## [1.0.2] - 2026-05-13
 
 ### Fixed
