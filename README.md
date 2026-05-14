@@ -45,7 +45,7 @@ Violations show up as:
 |-------|---------|-------------|
 | `paths` | `.` | Space-separated paths to scan. Heatcheck skips dotdirs (`.git`, `.venv`, `__pycache__`, ...) automatically. Paths cannot contain spaces. |
 | `fail-on-violations` | `true` | Set to `false` to make the action advisory (always rc=0). |
-| `heatcheck-version` | (action ref) | Release tag whose binary to download. Defaults to the action's own ref — `uses: ...@v1.0.0` downloads the `v1.0.0` binary. Override only to pin the binary independently of the wrapper. |
+| `heatcheck-version` | (action ref) | Release tag whose binary to download. Defaults to the action's own ref — `uses: ...@v1.0.2` downloads the `v1.0.2` binary. Override only to pin the binary independently of the wrapper. |
 | `python-version` | `3.11` | Python version on PATH (heatcheck calls CPython's `ast` module). |
 | `upload-report` | `false` | Upload `.heatcheck/report.html` as a workflow artifact for browsing. |
 | `timeout-seconds` | `600` | Per-run timeout for the heatcheck binary. |
@@ -108,10 +108,10 @@ blocking PRs until the backlog is cleaned up.
 
 ```yaml
 - uses: actions/checkout@v4
-- uses: nchantarotwong/heatcheck-action@v1.0.0   # immutable patch version
+- uses: nchantarotwong/heatcheck-action@v1.0.2   # immutable patch version
 ```
 
-Pin to the exact patch version (e.g. `@v1.0.0`) instead of the floating
+Pin to the exact patch version (e.g. `@v1.0.2`) instead of the floating
 major (`@v1`) when you need byte-identical scan results across re-runs.
 
 ### Upload the HTML report as an artifact
@@ -164,7 +164,7 @@ action:
 2. Sets up Python via `actions/setup-python` (heatcheck calls
    CPython's `ast` module for parsing).
 3. Resolves the heatcheck-action release tag from the action's own
-   ref (e.g. `@v1.0.0` → `v1.0.0`).
+   ref (e.g. `@v1.0.2` → `v1.0.2`).
 4. Downloads `heatcheck-{linux|darwin}-{x86_64|arm64}` and its
    `.sha256` from the GitHub Release.
 5. Verifies the SHA256 checksum.
