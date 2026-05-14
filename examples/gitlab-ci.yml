@@ -1,0 +1,22 @@
+# Minimal heatcheck job for GitLab CI.
+# Drop into .gitlab-ci.yml (or include from your security stage).
+#
+# Uses the heatcheck container image, which works on both GitLab.com
+# shared runners and self-hosted runners with a docker / kubernetes
+# executor. Failed scans (any violation found) fail the job.
+#
+# For GitLab Ultimate users who want findings to surface in the MR
+# widget, swap --json for --sarif and use `reports: sast:` on the
+# artifact — requires heatcheck v1.1.0+ (in progress).
+# See docs/non-github-actions.md for the SARIF variant.
+
+heatcheck:
+  stage: test
+  image: ghcr.io/nchantarotwong/heatcheck:v1
+  script:
+    - heatcheck --json . > heatcheck.json
+  artifacts:
+    when: always
+    paths:
+      - heatcheck.json
+    expire_in: 1 week

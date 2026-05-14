@@ -13,6 +13,11 @@ assignments, returns, and tuple-unpacks, and reports cases where
 attacker-controlled input reaches a sink that requires a sanitized
 value. Built around how LLMs actually fail — not generic Python lint.
 
+> **Not on GitHub Actions?** heatcheck also ships as a container
+> (`ghcr.io/nchantarotwong/heatcheck`) and as a standalone binary —
+> see [docs/non-github-actions.md](docs/non-github-actions.md) for
+> GitLab CI, Jenkins, generic Docker, and pre-commit setups.
+
 ## Quick start
 
 ```yaml
@@ -144,6 +149,27 @@ HTML page with one section per violation.
 
 See [examples/](examples/) for complete workflow files you can drop
 into `.github/workflows/`.
+
+## Using heatcheck without GitHub Actions
+
+The scanner is a single static binary; the GitHub Action is just a
+wrapper that adds PR annotations and a workflow summary. Same binary
+ships through three channels — pick whichever your CI prefers:
+
+| Channel | Pin like | When to use |
+|---------|----------|-------------|
+| **Container** | `ghcr.io/nchantarotwong/heatcheck:v1.0.2` | GitLab, Jenkins, Azure DevOps, Buildkite, any container-capable CI. Pinnable by digest for supply-chain review. |
+| **Binary release** | `heatcheck-{linux,darwin}-{x86_64,arm64}` from the [Releases page](https://github.com/nchantarotwong/heatcheck-action/releases) | CIs without container support, or air-gapped builds where you mirror the asset to internal storage. |
+| **This Action** | `nchantarotwong/heatcheck-action@v1.0.2` | GitHub Actions (you're reading its docs). |
+
+Quick container example:
+
+```sh
+docker run --rm -v "$PWD:/src" ghcr.io/nchantarotwong/heatcheck:v1 --json .
+```
+
+Full guide with GitLab CI, Jenkins, generic Docker, pre-commit, and
+SARIF setups: [docs/non-github-actions.md](docs/non-github-actions.md).
 
 ## Runner support
 

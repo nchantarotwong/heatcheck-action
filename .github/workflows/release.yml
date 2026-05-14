@@ -218,3 +218,98 @@ jobs:
               --notes "Automated release. See action.yml for runtime usage. SHA256 checksums attached." \
               release-files/*
           fi
+
+  publish-image:
+    # Build & push the linux/amd64 + linux/arm64 container image to
+    # GHCR. Runs after `publish` so the GitHub Release exists when the
+    # Dockerfile fetches the binary by tag. Image name is `heatcheck`
+    # even though the repo is `heatcheck-action` — the container isn't
+    # GHA-specific, so the cleaner name reads better for non-GHA users.
+    needs: publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Check out repo (Dockerfile lives at root)
+        uses: actions/checkout@v4
+
+      - name: Determine release tag
+        id: tag
+        env:
+          REF: ${{ github.ref }}
+          DISPATCH_TAG: ${{ inputs.release-tag }}
+        run: |
+          set -euo pipefail
+          if [ "${REF#refs/tags/}" != "${REF}" ]; then
+            tag="${REF#refs/tags/}"
+          elif [ -n "${DISPATCH_TAG:-}" ]; then
+            tag="${DISPATCH_TAG}"
+          else
+            echo "::notice::No release tag — skipping image publish."
+            echo "skip=1" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          # vX.Y.Z → vX. Empty for prereleases (e.g. v1.0.0-rc1) since
+          # we don't want a -rc tag floating the major.
+          major=""
+          if echo "$tag" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
+            major="$(echo "$tag" | grep -oE '^v[0-9]+')"
+          fi
+          echo "major=$major" >> "$GITHUB_OUTPUT"
+
+      - name: Compute image tags
+        if: steps.tag.outputs.skip != '1'
+        id: imagetags
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
+          MAJOR: ${{ steps.tag.outputs.major }}
+          OWNER: ${{ github.repository_owner }}
+        run: |
+          set -euo pipefail
+          # ghcr.io image names must be lowercase.
+          owner_lc="$(echo "$OWNER" | tr '[:upper:]' '[:lower:]')"
+          img="ghcr.io/${owner_lc}/heatcheck"
+          tags="${img}:${TAG}"
+          # Floating major + :latest only when MAJOR is set (stable
+          # release, not a prerelease) so `:latest` never points at an
+          # rc/beta build.
+          if [ -n "$MAJOR" ]; then
+            tags="${tags},${img}:${MAJOR},${img}:latest"
+          fi
+          echo "tags=$tags" >> "$GITHUB_OUTPUT"
+          echo "Will push: $tags"
+
+      - name: Set up QEMU (arm64 emulation on amd64 runner)
+        if: steps.tag.outputs.skip != '1'
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Buildx
+        if: steps.tag.outputs.skip != '1'
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        if: steps.tag.outputs.skip != '1'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push multi-arch image
+        if: steps.tag.outputs.skip != '1'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          build-args: |
+            HEATCHECK_VERSION=${{ steps.tag.outputs.tag }}
+          tags: ${{ steps.imagetags.outputs.tags }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ steps.tag.outputs.tag }}
+          provenance: false
