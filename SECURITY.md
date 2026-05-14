@@ -3,9 +3,14 @@
 ## Reporting a Vulnerability
 
 If you've discovered a security issue in heatcheck, the heatcheck-action
-wrapper, or any related component, please report it via email:
+wrapper, or any related component, please report it through one of the
+private channels below — in preference order:
 
-**security@heatcheck.dev**
+1. **GitHub Security Advisory** (preferred):
+   https://github.com/nchantarotwong/heatcheck-action/security/advisories/new
+   — guided form, encrypted, automatically loops in the maintainer.
+2. **Email**: **security@heatcheck.dev** — for reporters who can't or
+   don't want to use GitHub.
 
 Include:
 
