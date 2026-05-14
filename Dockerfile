@@ -18,10 +18,18 @@ FROM debian:bookworm-slim
 ARG TARGETARCH
 ARG HEATCHECK_VERSION
 
+# Runtime deps. The binary is dynamically linked against libxml2 and
+# libsqlite3 (release.yml builds against libxml2-dev / libsqlite3-dev);
+# the slim base doesn't ship either, so the binary fails to load
+# without them. libcurl4 and zlib1g come in via `curl` / base.
+# `python3` is required at scan time — heatcheck shells out to
+# CPython's ast module for parsing.
 RUN apt-get update \
  && apt-get install -y --no-install-recommends \
       ca-certificates \
       curl \
+      libsqlite3-0 \
+      libxml2 \
       python3 \
  && rm -rf /var/lib/apt/lists/* \
  && ln -s /usr/bin/python3 /usr/local/bin/python
