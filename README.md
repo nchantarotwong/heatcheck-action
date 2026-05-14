@@ -27,7 +27,7 @@ jobs:
   scan:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: nchantarotwong/heatcheck-action@v1
 ```
 
@@ -84,14 +84,14 @@ Violations show up as:
 ### Minimal — scan everything, fail the build on violations
 
 ```yaml
-- uses: actions/checkout@v4
+- uses: actions/checkout@v6
 - uses: nchantarotwong/heatcheck-action@v1
 ```
 
 ### Scan specific directories
 
 ```yaml
-- uses: actions/checkout@v4
+- uses: actions/checkout@v6
 - uses: nchantarotwong/heatcheck-action@v1
   with:
     paths: src api/handlers
@@ -103,7 +103,7 @@ Useful for adopting heatcheck on an existing codebase without
 blocking PRs until the backlog is cleaned up.
 
 ```yaml
-- uses: actions/checkout@v4
+- uses: actions/checkout@v6
 - uses: nchantarotwong/heatcheck-action@v1
   with:
     fail-on-violations: 'false'
@@ -112,7 +112,7 @@ blocking PRs until the backlog is cleaned up.
 ### Reproducible CI — pin to a specific release
 
 ```yaml
-- uses: actions/checkout@v4
+- uses: actions/checkout@v6
 - uses: nchantarotwong/heatcheck-action@v1.0.2   # immutable patch version
 ```
 
@@ -122,7 +122,7 @@ major (`@v1`) when you need byte-identical scan results across re-runs.
 ### Upload the HTML report as an artifact
 
 ```yaml
-- uses: actions/checkout@v4
+- uses: actions/checkout@v6
 - uses: nchantarotwong/heatcheck-action@v1
   with:
     upload-report: 'true'
@@ -134,7 +134,7 @@ HTML page with one section per violation.
 ### Read the JSON in a downstream step
 
 ```yaml
-- uses: actions/checkout@v4
+- uses: actions/checkout@v6
 - id: heatcheck
   uses: nchantarotwong/heatcheck-action@v1
   with:

@@ -50,10 +50,10 @@ jobs:
     runs-on: ${{ matrix.runner }}
     steps:
       - name: Check out heatcheck-action
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.11'
 
@@ -146,7 +146,7 @@ jobs:
           cat "${ASSET}.sha256"
 
       - name: Upload as job artifact (for cross-job collection)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.asset }}
           path: |
@@ -162,7 +162,7 @@ jobs:
       contents: write   # required to attach assets to a Release
     steps:
       - name: Check out repo (gh CLI needs a git workdir)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Determine release tag
         id: tag
@@ -186,7 +186,7 @@ jobs:
 
       - name: Download all build artifacts
         if: steps.tag.outputs.skip != '1'
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: artifacts
 
@@ -232,7 +232,7 @@ jobs:
       packages: write
     steps:
       - name: Check out repo (Dockerfile lives at root)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Determine release tag
         id: tag

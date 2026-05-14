@@ -86,12 +86,12 @@ runs:
           bad=1
         fi
         if [ -z "$(ls -A "$GITHUB_WORKSPACE" 2>/dev/null)" ]; then
-          echo "::warning::workspace at \$GITHUB_WORKSPACE is empty — did you forget 'uses: actions/checkout@v4' before this step?"
+          echo "::warning::workspace at \$GITHUB_WORKSPACE is empty — did you forget 'uses: actions/checkout@v6' before this step?"
         fi
         [ "$bad" = "0" ] || exit 1
 
     - name: Set up Python
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v6
       with:
         python-version: ${{ inputs.python-version }}
 
@@ -155,7 +155,7 @@ runs:
 
     - name: Cache heatcheck binary
       id: cache
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: ${{ runner.temp }}/heatcheck-bin
         # Cache by version + asset so a re-tag doesn't reuse a stale binary.
@@ -286,7 +286,7 @@ runs:
 
     - name: Upload HTML report
       if: ${{ always() && inputs.upload-report == 'true' }}
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: heatcheck-report
         path: .heatcheck/report.html
