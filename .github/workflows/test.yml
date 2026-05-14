@@ -51,7 +51,7 @@ jobs:
         os: [ubuntu-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Create vulnerable fixture
         run: |
@@ -97,7 +97,7 @@ jobs:
     if: needs.discover.outputs.latest != ''
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Create clean fixture
         run: |
@@ -128,7 +128,7 @@ jobs:
   rejects-invalid-input:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - id: scan
         continue-on-error: true
         uses: ./
