@@ -1,14 +1,7 @@
-# Force users through one of the templates above (bug or feature) rather
-# than letting them open a blank issue. Security vulnerabilities + general
-# questions get their own contact link so they don't end up as public
-# bug reports.
+# Force users through the bug or feature template — no blank-issue
+# escape hatch. GitHub auto-injects a "Report a security vulnerability"
+# link on the new-issue chooser when Private Vulnerability Reporting
+# is enabled in repo settings, so we don't need a custom contact_link
+# for that. The email fallback lives in SECURITY.md for reporters who
+# can't or don't want to use the GitHub form.
 blank_issues_enabled: false
-
-contact_links:
-  - name: 🔒 Security vulnerability
-    url: https://github.com/nchantarotwong/heatcheck-action/security/advisories/new
-    about: >
-      Report security issues privately via GitHub Security Advisories.
-      Do NOT open a public issue — public disclosure before a fix is
-      shipped puts heatcheck users at risk. Email fallback:
-      security@heatcheck.dev (see SECURITY.md for full policy).
