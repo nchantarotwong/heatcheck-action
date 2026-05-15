@@ -23,7 +23,7 @@ docker run --rm -v "$PWD:/src" \
   --json . > heatcheck.json
 ```
 
-- Image tags mirror the wrapper's releases: `v1.1.0` (immutable),
+- Image tags mirror the wrapper's releases: `v1.2.1` (immutable),
   `v1` (floating major), `latest` (latest stable, skips prereleases).
 - Mount your repo at `/src` (the image's `WORKDIR`).
 - Pass any flag the binary accepts — `--help` is the default `CMD`.
@@ -57,7 +57,7 @@ If your CI doesn't do containers (or pulling from `ghcr.io` is
 blocked), grab the binary from a release:
 
 ```sh
-VERSION=v1.1.0
+VERSION=v1.2.1
 case "$(uname -s)/$(uname -m)" in
   Linux/x86_64)  ASSET=heatcheck-linux-x86_64 ;;
   Linux/aarch64) ASSET=heatcheck-linux-arm64 ;;
@@ -267,9 +267,9 @@ minimal reproducer.
 internal registry:
 
 ```sh
-docker pull   ghcr.io/nchantarotwong/heatcheck:v1.1.0
-docker tag    ghcr.io/nchantarotwong/heatcheck:v1.1.0  internal.registry/security/heatcheck:v1.1.0
-docker push   internal.registry/security/heatcheck:v1.1.0
+docker pull   ghcr.io/nchantarotwong/heatcheck:v1.2.1
+docker tag    ghcr.io/nchantarotwong/heatcheck:v1.2.1  internal.registry/security/heatcheck:v1.2.1
+docker push   internal.registry/security/heatcheck:v1.2.1
 ```
 
 Then point your CI at the internal mirror.

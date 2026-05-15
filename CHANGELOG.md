@@ -11,6 +11,43 @@ Pin to a floating `@v1` for auto-bumps within v1.x, or an immutable
 
 ## [Unreleased]
 
+## [1.2.1] - 2026-05-15
+
+### Added
+- **HC-013 `weak-credential-hash`** (severity 8.0 / high). New umbrella
+  source tag `@credential` covers any user-supplied string from a field
+  named like `password`, `passwd`, `pwd`, `secret`, `token`, `api_key`,
+  etc. Flow into a fast-hash sink (`hashlib.md5/sha1/sha2*`, `crypt.crypt`)
+  fires HC-013. `bcrypt`, `argon2`, `passlib`, `hashlib.scrypt`, and
+  `hashlib.pbkdf2_hmac` sanitize the tag.
+- **HC-014 `mass-assignment`** (severity 8.5 / high). New flow tag
+  `@unfiltered_dict` applied to `request.json`, `request.form.to_dict()`,
+  `await request.json()`, `request.data` (DRF), `json.loads(request.body)`.
+  Splatting an `@unfiltered_dict` into a constructor or `.update()`/
+  `.update_from_dict()`/`.fill()`/`.from_dict()` fires HC-014. Pydantic
+  `BaseModel` subclasses and `@dataclass`-decorated classes act as the
+  whitelist. Explicit-key allowlist comprehensions also sanitize.
+
+### Fixed (false-positive reductions, surfaced by an Open WebUI scan)
+- **Env vars no longer tagged as `@user_input`**. `os.environ.get(K)`,
+  `os.environ[K]`, and `os.getenv(K)` are now treated as operator-
+  controlled, not attacker-controlled. They no longer pull HC-001 /
+  HC-002 / HC-006 chains by themselves.
+- **Basename-class path sanitizers recognized**. `os.path.basename(x)`,
+  `pathlib.Path(x).name`, and `urlparse(x).path.split('/')[-1]` clear
+  `@user_input → @path_safe`. Eliminates HC-001 false positives on the
+  conventional safe upload pattern (`basename(filename) + os.path.join`).
+- **HC-006 skipped when the f-string host is a literal**. URLs of the
+  form `f"https://api.example.com/{user}"` no longer fire HC-006 — real
+  SSRF requires attacker-controlled host, not just attacker-controlled
+  path on a fixed host. Truly user-controlled hosts (`f"https://{user}/"`)
+  still fire.
+
+### Changed
+- **Scanner** rebuilt against Heat `1e38661` — bundles HC-013, HC-014,
+  and the three false-positive fixes above.
+- README "What heatcheck catches" table now lists HC-013 and HC-014.
+
 ## [1.1.0] - 2026-05-14
 
 ### Added

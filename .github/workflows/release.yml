@@ -26,14 +26,14 @@ on:
       heat-ref:
         description: 'Heat ref (commit SHA, branch, or tag) to build from.'
         required: false
-        default: '5925375ebdaa1c8a6cc6b97d2312f444b2a5cd4b'
+        default: '1e386615fbba19d712de3672d81681a131a28cac'
       release-tag:
         description: 'Release tag to upload to (for manual runs only). Skipped if empty.'
         required: false
         default: ''
 
 env:
-  HEAT_REF_DEFAULT: '5925375ebdaa1c8a6cc6b97d2312f444b2a5cd4b'
+  HEAT_REF_DEFAULT: '1e386615fbba19d712de3672d81681a131a28cac'
 
 jobs:
   build:
