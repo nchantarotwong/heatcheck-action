@@ -23,7 +23,7 @@ docker run --rm -v "$PWD:/src" \
   --json . > heatcheck.json
 ```
 
-- Image tags mirror the wrapper's releases: `v1.0.3` (immutable),
+- Image tags mirror the wrapper's releases: `v1.1.0` (immutable),
   `v1` (floating major), `latest` (latest stable, skips prereleases).
 - Mount your repo at `/src` (the image's `WORKDIR`).
 - Pass any flag the binary accepts — `--help` is the default `CMD`.
@@ -57,7 +57,7 @@ If your CI doesn't do containers (or pulling from `ghcr.io` is
 blocked), grab the binary from a release:
 
 ```sh
-VERSION=v1.0.3
+VERSION=v1.1.0
 case "$(uname -s)/$(uname -m)" in
   Linux/x86_64)  ASSET=heatcheck-linux-x86_64 ;;
   Linux/aarch64) ASSET=heatcheck-linux-arm64 ;;
@@ -84,15 +84,10 @@ action wrapper's pin).
 
 ## SARIF output
 
-> **Status:** SARIF emission lands in **heatcheck v1.1.0** (not yet
-> released). The snippets below show how to wire it up; the
-> `--sarif` flag will exit `2` on earlier versions. Track progress
-> on the [releases page](https://github.com/nchantarotwong/heatcheck-action/releases).
-
 [SARIF 2.1.0](https://docs.oasis-open.org/sarif/sarif/v2.1.0/sarif-v2.1.0.html)
-is the OASIS-standard format for static-analysis results. Once
-heatcheck v1.1.0 ships, the binary will emit SARIF that surfaces
-natively in:
+is the OASIS-standard format for static-analysis results. heatcheck
+emits SARIF via the `--sarif` flag (heatcheck v1.1.0+); the output
+surfaces natively in:
 
 - GitLab Ultimate's SAST widget (MR pipeline reports)
 - Azure DevOps SARIF SAST tasks
@@ -101,7 +96,7 @@ natively in:
 - Any tool that consumes SARIF (Defectdojo, Semgrep AppSec Platform,
   etc.)
 
-Usage will look like:
+Usage:
 
 ```sh
 heatcheck --sarif . > heatcheck.sarif
@@ -272,9 +267,9 @@ minimal reproducer.
 internal registry:
 
 ```sh
-docker pull   ghcr.io/nchantarotwong/heatcheck:v1.0.3
-docker tag    ghcr.io/nchantarotwong/heatcheck:v1.0.3  internal.registry/security/heatcheck:v1.0.3
-docker push   internal.registry/security/heatcheck:v1.0.3
+docker pull   ghcr.io/nchantarotwong/heatcheck:v1.1.0
+docker tag    ghcr.io/nchantarotwong/heatcheck:v1.1.0  internal.registry/security/heatcheck:v1.1.0
+docker push   internal.registry/security/heatcheck:v1.1.0
 ```
 
 Then point your CI at the internal mirror.

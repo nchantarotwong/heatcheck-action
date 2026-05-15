@@ -7,7 +7,7 @@
 #
 # For GitLab Ultimate users who want findings to surface in the MR
 # widget, swap --json for --sarif and use `reports: sast:` on the
-# artifact — requires heatcheck v1.1.0+ (in progress).
+# artifact — requires heatcheck v1.1.0+.
 # See docs/non-github-actions.md for the SARIF variant.
 
 heatcheck:
