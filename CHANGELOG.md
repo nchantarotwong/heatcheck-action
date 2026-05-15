@@ -11,6 +11,17 @@ Pin to a floating `@v1` for auto-bumps within v1.x, or an immutable
 
 ## [Unreleased]
 
+## [1.0.3] - 2026-05-14
+
+### Changed
+- **Scanner** rebuilt against Heat `83733029` — newer compiler and
+  language fixes ship in the binary. No user-visible behavior change
+  for valid scans.
+- **Scanner** text-mode (`heatcheck FILE.py`, without `--json`) now
+  exits `1` when violations are found, matching `--json` mode and
+  the `--help`-documented contract. JSON-mode exit semantics
+  unchanged.
+
 ### Added
 - **Container image** at `ghcr.io/nchantarotwong/heatcheck` — multi-arch
   (linux/amd64 + linux/arm64), one tag per release (`vX.Y.Z`, plus
@@ -25,11 +36,24 @@ Pin to a floating `@v1` for auto-bumps within v1.x, or an immutable
 - Top-level README callout pointing non-GHA users at the new docs so
   the GHA-flavored repo name doesn't gate discovery.
 
+### Fixed
+- Container Dockerfile installs `libxml2` and `libsqlite3-0` at
+  runtime. The slim base image didn't ship them and the binary links
+  against both; first v1.0.2 image-build attempt failed at the
+  in-Dockerfile `heatcheck --version` smoke step.
+
+### Internal
+- `actions/*` bumped to Node.js 24-compatible majors across workflows,
+  `action.yml`, README example snippets, and `examples/`. Clears the
+  Node 20 deprecation warnings ahead of GitHub's June 2026 forced
+  upgrade. `checkout` v4→v6, `setup-python` v5→v6, `upload-artifact`
+  v4→v7, `download-artifact` v4→v8, `cache` v4→v5.
+
 ### Forthcoming (tracked, not in this release)
-- **SARIF output** (`heatcheck --sarif`) lands in heatcheck v1.1.0.
-  Once shipped, enables native ingestion in GitLab Ultimate SAST,
-  Azure DevOps, SonarQube, and GitHub Code Scanning. Docs already
-  show the wiring; the flag will exit `2` on v1.0.x.
+- **SARIF output** (`heatcheck --sarif`) — enables native ingestion in
+  GitLab Ultimate SAST, Azure DevOps, SonarQube, and GitHub Code
+  Scanning. Docs already show the wiring; the flag will exit `2` on
+  releases prior to its inclusion.
 
 ## [1.0.2] - 2026-05-13
 
