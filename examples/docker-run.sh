@@ -10,7 +10,7 @@
 #   64 - internal scanner error
 #
 # Most CIs fail the job on any non-zero exit; replace `:v1` with a
-# specific patch tag (e.g. `:v1.0.3`) or digest for reproducible runs.
+# specific patch tag (e.g. `:v1.1.0`) or digest for reproducible runs.
 
 set -euo pipefail
 

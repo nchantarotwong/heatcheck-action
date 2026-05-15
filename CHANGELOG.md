@@ -11,6 +11,26 @@ Pin to a floating `@v1` for auto-bumps within v1.x, or an immutable
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-05-14
+
+### Added
+- **SARIF 2.1.0 output** via `heatcheck --sarif`. Emits the
+  OASIS-standard format that GitHub Code Scanning, GitLab Ultimate
+  SAST, Azure DevOps, SonarQube, and most other SAST consumers
+  ingest natively. Each heatcheck sink code (`HC-005` etc.) maps
+  to a SARIF rule with a `properties.security-severity` score;
+  results carry source/sink locations relative to a `%SRCROOT%`
+  base ID. Mutually exclusive with `--json`. Validated end-to-end
+  against GitHub Code Scanning during the v1.1.0-rc1 prerelease.
+
+### Changed
+- **Scanner** rebuilt against Heat `5925375` — adds SARIF emission
+  plus any Heat compiler/language changes since v1.0.3.
+- `docs/non-github-actions.md` SARIF section is no longer marked
+  "forthcoming"; the GitLab Ultimate SAST and GitHub Code Scanning
+  wiring is now live. `examples/gitlab-ci.yml` comment drops the
+  "(in progress)" qualifier on the SARIF variant.
+
 ## [1.0.3] - 2026-05-14
 
 ### Changed
@@ -48,12 +68,6 @@ Pin to a floating `@v1` for auto-bumps within v1.x, or an immutable
   Node 20 deprecation warnings ahead of GitHub's June 2026 forced
   upgrade. `checkout` v4→v6, `setup-python` v5→v6, `upload-artifact`
   v4→v7, `download-artifact` v4→v8, `cache` v4→v5.
-
-### Forthcoming (tracked, not in this release)
-- **SARIF output** (`heatcheck --sarif`) — enables native ingestion in
-  GitLab Ultimate SAST, Azure DevOps, SonarQube, and GitHub Code
-  Scanning. Docs already show the wiring; the flag will exit `2` on
-  releases prior to its inclusion.
 
 ## [1.0.2] - 2026-05-13
 
