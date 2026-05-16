@@ -11,6 +11,31 @@ Pin to a floating `@v1` for auto-bumps within v1.x, or an immutable
 
 ## [Unreleased]
 
+## [1.3.3] - 2026-05-16
+
+### Fixed
+- **False positive: SQLAlchemy `session.execute(<Select>)`.** A
+  `Select`/Core-or-ORM statement passed to a SQLAlchemy
+  Session/Engine `.execute()`/`.executemany()` is fully
+  parameterized — there is no string-SQL boundary. heatcheck
+  previously fired HC-005 when the statement arrived from a helper
+  via tuple-unpack and inherited `user_input` from filter arguments
+  (the `x, _ = paginated_select(statement=base_query, filters=[…]);
+  session.execute(x)` shape — 4 false positives in Airflow's
+  `api_fastapi`). Now narrowed: on a SQLAlchemy session/engine
+  receiver, only a raw-SQL-string expression (f-string / concat /
+  `%` / `.format()` / `text(<tainted>)`) fires. The injectable
+  `session.execute(text(<tainted>))` form is still caught at the
+  `text()` sink, so this removes false positives with no new false
+  negative; DB-API `cursor.execute("…"+u)` is a different receiver
+  and is unaffected.
+
+### Changed
+- **Scanner** rebuilt against Heat `4ec72f9`.
+- Regression corpus GUARD 11/11 — adds the `paginated_select`
+  FP-clean guard plus false-negative guards (`cursor.execute(concat)`
+  and `session.execute(text(f-string))` must still fire).
+
 ## [1.3.2] - 2026-05-16
 
 ### Added

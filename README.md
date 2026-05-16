@@ -51,7 +51,7 @@ Violations show up as:
 |-------|---------|-------------|
 | `paths` | `.` | Space-separated paths to scan. Heatcheck skips dotdirs (`.git`, `.venv`, `__pycache__`, ...) automatically. Paths cannot contain spaces. |
 | `fail-on-violations` | `true` | Set to `false` to make the action advisory (always rc=0). |
-| `heatcheck-version` | (action ref) | Release tag whose binary to download. Defaults to the action's own ref — `uses: ...@v1.3.2` downloads the `v1.3.2` binary. Override only to pin the binary independently of the wrapper. |
+| `heatcheck-version` | (action ref) | Release tag whose binary to download. Defaults to the action's own ref — `uses: ...@v1.3.3` downloads the `v1.3.3` binary. Override only to pin the binary independently of the wrapper. |
 | `python-version` | `3.11` | Python version on PATH (heatcheck calls CPython's `ast` module). |
 | `upload-report` | `false` | Upload `.heatcheck/report.html` as a workflow artifact for browsing. |
 | `timeout-seconds` | `600` | Per-run timeout for the heatcheck binary. |
@@ -113,7 +113,7 @@ reproducible artifacts and exact scope are in
   to a sink — is a very common real-world pattern that was a blind
   spot for heatcheck pre-v1.3.0; it now tracks it, shipped with zero
   finding movement across an 8-repo re-scan.
-- **Cross-module taint (v1.3.2), reproducible.** Attacker input
+- **Cross-module taint (v1.3.3), reproducible.** Attacker input
   flowing *across files* — request handler → `from app.dao import X;
   X.create(...)` → `%`-formatted `cur.execute()` in the imported
   module — is followed end-to-end (bag aliasing + `ClassName.static
@@ -159,10 +159,10 @@ blocking PRs until the backlog is cleaned up.
 
 ```yaml
 - uses: actions/checkout@v6
-- uses: nchantarotwong/heatcheck-action@v1.3.2   # immutable patch version
+- uses: nchantarotwong/heatcheck-action@v1.3.3   # immutable patch version
 ```
 
-Pin to the exact patch version (e.g. `@v1.3.2`) instead of the floating
+Pin to the exact patch version (e.g. `@v1.3.3`) instead of the floating
 major (`@v1`) when you need byte-identical scan results across re-runs.
 
 ### Upload the HTML report as an artifact
@@ -204,9 +204,9 @@ ships through three channels — pick whichever your CI prefers:
 
 | Channel | Pin like | When to use |
 |---------|----------|-------------|
-| **Container** | `ghcr.io/nchantarotwong/heatcheck:v1.3.2` | GitLab, Jenkins, Azure DevOps, Buildkite, any container-capable CI. Pinnable by digest for supply-chain review. |
+| **Container** | `ghcr.io/nchantarotwong/heatcheck:v1.3.3` | GitLab, Jenkins, Azure DevOps, Buildkite, any container-capable CI. Pinnable by digest for supply-chain review. |
 | **Binary release** | `heatcheck-{linux,darwin}-{x86_64,arm64}` from the [Releases page](https://github.com/nchantarotwong/heatcheck-action/releases) | CIs without container support, or air-gapped builds where you mirror the asset to internal storage. |
-| **This Action** | `nchantarotwong/heatcheck-action@v1.3.2` | GitHub Actions (you're reading its docs). |
+| **This Action** | `nchantarotwong/heatcheck-action@v1.3.3` | GitHub Actions (you're reading its docs). |
 
 Quick container example:
 
@@ -236,7 +236,7 @@ action:
 2. Sets up Python via `actions/setup-python` (heatcheck calls
    CPython's `ast` module for parsing).
 3. Resolves the heatcheck-action release tag from the action's own
-   ref (e.g. `@v1.3.2` → `v1.3.2`).
+   ref (e.g. `@v1.3.3` → `v1.3.3`).
 4. Downloads `heatcheck-{linux|darwin}-{x86_64|arm64}` and its
    `.sha256` from the GitHub Release.
 5. Verifies the SHA256 checksum.
