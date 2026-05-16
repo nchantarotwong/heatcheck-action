@@ -11,6 +11,32 @@ Pin to a floating `@v1` for auto-bumps within v1.x, or an immutable
 
 ## [Unreleased]
 
+## [1.3.4] - 2026-05-16
+
+### Fixed
+- **False positive: cross-module Pydantic/dataclass mass assignment
+  (HC-014).** `User(**request.json)` is exempt from HC-014 when the
+  constructed class is a Pydantic/dataclass schema (the schema *is*
+  the field whitelist). That exemption previously only covered
+  schemas defined in the same module; an imported schema —
+  `from app.schemas import S; … S(**body)` — still fired HC-014
+  (the langserve `StreamLogParameters` / `StreamEventsParameters`
+  shape, 2 false positives). `collect_imports` now runs the same
+  Pydantic detector over each imported module, so cross-module
+  schemas get the exemption too. Suppress-only by construction:
+  it can only add receivers to the HC-014 exemption set, never
+  introduce a finding — a non-schema imported class (e.g. an ORM
+  model) still fires.
+
+### Changed
+- **Scanner** rebuilt against Heat `f32c459`.
+- Regression corpus GUARD 13/13 — adds a cross-module Pydantic
+  FP-clean guard and a cross-module ORM-model guard (the latter
+  must still fire, proving the exemption stays schema-scoped).
+- Verified with a 9-repo native FP-movement guard vs v1.3.3: zero
+  finding movement on 8 real repos; only the intended langserve
+  HC-014 pair removed.
+
 ## [1.3.3] - 2026-05-16
 
 ### Fixed
