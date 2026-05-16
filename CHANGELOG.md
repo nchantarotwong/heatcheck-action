@@ -11,6 +11,30 @@ Pin to a floating `@v1` for auto-bumps within v1.x, or an immutable
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-05-16
+
+### Changed
+- **~30× faster cold scans.** The scanner previously spawned one
+  `python3` AST-bridge subprocess per source file — CPython startup
+  + `import ast,json` paid per file dominated runtime on large
+  repos, and cross-module import resolution re-spawned the bridge
+  for every importer of a shared module. It now drives a single
+  persistent Python AST worker for the whole multi-file scan, with
+  a parse cache so a module imported by N files is parsed once.
+  Measured on a 452-file corpus (including a 21k-line file):
+  **63.85s → 2.12s**. Scan **findings are byte-identical** to
+  v1.3.4 — this is purely a performance change, no detection or
+  output behavior changes. Single-file `--fix`, `--self-test` and
+  the LSP server are unchanged (they keep the one-shot path), and
+  a worker failure transparently falls back to the old per-file
+  spawn, so results are unaffected even if the worker can't start.
+- **Scanner** rebuilt against Heat `a4bb2f1`.
+- Verified byte-identical findings vs v1.3.4 on 452 real files
+  (incl. multi-chunk reassembly of a 21k-line file), the
+  interprocedural eval corpus, and text + JSON modes. Suites:
+  self-test 5/5, regression corpus GUARD 13/13, output/SARIF/FP
+  format suites all green.
+
 ## [1.3.4] - 2026-05-16
 
 ### Fixed
