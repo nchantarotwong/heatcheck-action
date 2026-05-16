@@ -11,6 +11,28 @@ Pin to a floating `@v1` for auto-bumps within v1.x, or an immutable
 
 ## [Unreleased]
 
+## [1.4.1] - 2026-05-16
+
+### Fixed
+- **Scanner self-reported version was wrong.** `heatcheck_version()`
+  feeds `--version`, the LSP `serverInfo`, and the SARIF
+  `tool.driver.version` (which surfaces in GitHub code-scanning).
+  It was a hand-maintained constant that drifted — stuck at
+  `1.2.1` across v1.3.0 → v1.4.0 — so every released binary
+  misreported its version and the code-scanning provenance/audit
+  trail was wrong. The release build now stamps the version from
+  the release tag (the tag is the single source of truth and the
+  build hard-fails if stamping doesn't take), so from v1.4.1 on
+  `--version` and the SARIF tool version match the release. Local
+  / `install.sh` / LSP-dev builds report a `0.0.0-dev` sentinel
+  rather than a stale number.
+
+### Changed
+- **Scanner** rebuilt against Heat `336bdba`. The only scanner
+  change vs v1.4.0 is the version-sentinel cleanup — **scan
+  findings are byte-identical to v1.4.0**, no detection or output
+  behavior change.
+
 ## [1.4.0] - 2026-05-16
 
 ### Changed
