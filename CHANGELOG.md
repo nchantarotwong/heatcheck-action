@@ -11,6 +11,29 @@ Pin to a floating `@v1` for auto-bumps within v1.x, or an immutable
 
 ## [Unreleased]
 
+## [1.3.2] - 2026-05-16
+
+### Added
+- **Absolute-package-import resolution — completes the cross-module
+  taint chain.** Module resolution previously only looked relative to
+  the importing file's directory, so absolute package imports
+  (`from myapp.models import X` resolved against the package root —
+  the common real-world layout) computed the wrong path and the
+  imported module was never analyzed. Resolution now walks up to the
+  package root. Combined with v1.3.0 (request-bag aliasing) and
+  v1.3.1 (`ClassName.staticmethod` resolution), attacker input
+  flowing **across files** — request handler → imported helper / DAO
+  class → sink — is now caught. Verified end-to-end on a real
+  package: the `request.post()` → `Cls.create(data['k'])` →
+  `%`-format `cur.execute()` SQLi shape, previously a confirmed
+  false negative, is now reported.
+
+### Changed
+- **Scanner** rebuilt against Heat `23e9c90`.
+- Regression corpus GUARD 8/8 — the absolute-package-import
+  cross-module case is now a hard guard (was the last forward-looking
+  xfail; only an unrelated `sys.argv` case remains).
+
 ## [1.3.1] - 2026-05-16
 
 ### Added
