@@ -11,6 +11,35 @@ Pin to a floating `@v1` for auto-bumps within v1.x, or an immutable
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-05-15
+
+### Added
+- **Request-bag aliasing is now a taint source.** `data = request.form`
+  (also `.args` / `.values` / `.headers` / `.cookies`, Django `.POST` /
+  `.GET`, Starlette `.query_params`, and aiohttp `await request.post()`),
+  then `data['k']` flowing to a sink, is now detected. Previously only
+  direct `request.form['k']` and `.to_dict()` were recognized — the
+  aliased-bag handler shape is one of the most common in real Flask /
+  aiohttp / FastAPI code, so this closes a broad false-negative class.
+  Allowlist-filtered dicts stay clean: zero finding movement across an
+  8 real-repo re-scan, so no new false positives.
+
+### Fixed
+- **Scanner stability on cross-file imports (RT-0105).** The bag-alias
+  read volume exposed a pre-existing use-after-free in the runtime's
+  struct-valued container ARC ownership, triggered when analyzing a
+  module that imports another module. Fixed in the bundled scanner
+  (Heat #869/#870). Scanning projects with cross-file imports no longer
+  risks an RT-0105 abort.
+
+### Changed
+- **Scanner** rebuilt against Heat `59980f7` — bag-alias taint source
+  plus the RT-0105 runtime fix.
+- Added a regression corpus to the scanner test suite that pins the
+  v1.2.x false-positive fixes and the new bag-alias behavior, with
+  the remaining cross-module / `sys.argv` gaps wired as acceptance
+  tests.
+
 ## [1.2.1] - 2026-05-15
 
 ### Added
