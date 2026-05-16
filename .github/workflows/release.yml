@@ -122,11 +122,48 @@ jobs:
       - name: Bootstrap heatc + self-host rebuild + compile heatcheck
         env:
           ASSET: ${{ matrix.asset }}
+          DISPATCH_TAG: ${{ inputs.release-tag }}
         run: |
           set -euo pipefail
           cd Heat
           bash bootstrap/scripts/bootstrap_heatc.sh
           bash bootstrap/scripts/heatc_rebuild.sh
+
+          # Stamp the scanner's self-reported version from the release
+          # tag, so `--version`, the LSP serverInfo, and the SARIF
+          # tool.driver.version (which lands in GitHub code-scanning)
+          # match the release the binary ships in. Before this the
+          # value was a hand-maintained constant in heatcheck.heat
+          # that drifted (stuck at 1.2.1 across v1.3.0–v1.4.0). The
+          # tag is now the single source of truth.
+          #
+          # Tag push → GITHUB_REF_NAME is vX.Y.Z. Manual run → the
+          # release-tag input (empty on a preflight build → leave the
+          # source's "0.0.0-dev" sentinel; that build is not a release).
+          # The substitution is value-agnostic (replaces whatever
+          # heatcheck_version() currently returns) so it works even
+          # when HEAT_REF_DEFAULT points at a Heat commit predating
+          # the sentinel cleanup.
+          if [ "${GITHUB_EVENT_NAME}" = "push" ]; then
+            RAWTAG="${GITHUB_REF_NAME}"
+          else
+            RAWTAG="${DISPATCH_TAG:-}"
+          fi
+          if [ -n "${RAWTAG}" ]; then
+            VER="${RAWTAG#v}"
+            perl -0pi -e \
+              's/(fn heatcheck_version\(\) -> String:\n\s*return ")[^"]*(")/${1}'"${VER}"'${2}/' \
+              heatcheck/heatcheck.heat
+            GOT="$(perl -0ne 'print $1 if /fn heatcheck_version\(\) -> String:\n\s*return "([^"]*)"/' heatcheck/heatcheck.heat)"
+            if [ "${GOT}" != "${VER}" ]; then
+              echo "::error::version stamp failed (heatcheck_version is '${GOT}', expected '${VER}'); heatcheck_version() shape may have changed"
+              exit 1
+            fi
+            echo "Stamped scanner version: ${VER}"
+          else
+            echo "::notice::No release tag — building with the source version sentinel (not a release)."
+          fi
+
           mkdir -p ../out
           /tmp/heatc heatcheck/heatcheck.heat -o "../out/${ASSET}" \
             2>&1 | grep -vE 'warning: overriding|warning generated|^$' || true
