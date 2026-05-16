@@ -11,7 +11,8 @@
 heatcheck walks a Python project's AST, traces provenance through
 assignments, returns, and tuple-unpacks, and reports cases where
 attacker-controlled input reaches a sink that requires a sanitized
-value. Built around how LLMs actually fail — not generic Python lint.
+value. The sink catalog is prioritized for the injection patterns we
+see in AI-assisted Python — not ported from a generic Python linter.
 
 > **Not on GitHub Actions?** heatcheck also ships as a container
 > (`ghcr.io/nchantarotwong/heatcheck`) and as a standalone binary —
@@ -83,41 +84,46 @@ Violations show up as:
 
 ## Why heatcheck
 
-Generic SAST (Bandit, Semgrep audit rules, etc.) is pattern-based: it
-flags a call *shape* whether or not attacker-controlled data actually
-reaches it. heatcheck is **taint-gated** — it only reports when
-provenance analysis shows untrusted input flowing to a sink that
-requires a sanitized value. Concretely, from our OSS field campaign
-(15 projects, ~11k Python files; methodology + results tracked in a
-running scoreboard):
+heatcheck is **taint-gated**: it reports only when provenance analysis
+shows untrusted input reaching a sink that requires a sanitized value.
+That contrasts with pattern/audit rules — Bandit and many community
+audit rulesets (and the specific ruleset we measured against, Semgrep
+Community Edition `p/security-audit`) flag a call *shape* whether or
+not attacker-controlled data actually reaches it. (Semgrep also has a
+taint mode and CodeQL ships taint-style Python queries; this section
+is scoped to what we actually ran, not all SAST.)
 
-- **Precision, not a wall of advisories.** On the same 13 codebases,
-  Semgrep's `p/security-audit` buried real signal under hundreds of
-  `avoid-pickle` / `avoid-dill` / `avoid-shelve` notes on internal,
-  non-attacker-controlled serialization. heatcheck stays silent there
-  by design — it taint-gates, so you triage findings, not noise.
-- **MCP-aware.** heatcheck treats MCP server tool-decorator parameters
-  (`@mcp.tool()` and friends) as attacker-controlled — a real
-  LLM-agent attack surface that Bandit / Semgrep / CodeQL default
-  rule packs have zero awareness of.
+The points below are from an internal OSS field campaign; the
+reproducible artifacts and exact scope are in
+[docs/methodology.md](docs/methodology.md):
+
+- **Precision over advisory volume.** Across the campaign targets,
+  Semgrep CE `p/security-audit` produced large numbers of
+  `avoid-pickle` / `avoid-dill` / `avoid-shelve` findings on internal,
+  non-attacker-controlled serialization. heatcheck taint-gates those
+  and stays silent — you triage reachable findings, not pattern hits.
+- **MCP source modeling.** heatcheck treats MCP server tool-decorator
+  parameters (`@mcp.tool()` and friends) as attacker-controlled. We
+  found no MCP tool-parameter *source modeling* in Bandit, CodeQL's
+  documented Python built-in queries, or Semgrep CE `p/security-audit`
+  during the campaign — a real LLM-agent attack surface those did not
+  model.
 - **Request-bag recall (v1.3.0).** The aliased-bag handler shape —
   `data = request.form` (or `await request.post()`), then `data["k"]`
-  to a sink — is one of the most common real-world patterns and was
-  a silent blind spot for taint tools generally; heatcheck tracks it
-  (shipped with zero false-positive movement across an 8-repo
-  re-scan).
-- **Cross-module taint (v1.3.2).** Attacker input flowing *across
-  files* — request handler → `from app.dao import X; X.create(...)`
-  → `%`-formatted `cur.execute()` in the imported module — is
-  followed end-to-end (bag aliasing + `ClassName.staticmethod`
-  resolution + absolute-package-import resolution). On a deliberately
-  vulnerable real repo (dvpwa) this exact SQLi is reported; Semgrep
-  `p/security-audit` returns zero findings on the same code. Most
-  SAST audit rulesets share this cross-module blind spot — heatcheck
-  no longer does.
-- **Curated for how LLMs actually fail**, not ported from a generic
-  Python linter — every sink (HC-001…HC-014) earns its place from
-  observed AI-authored failure modes.
+  to a sink — is a very common real-world pattern that was a blind
+  spot for heatcheck pre-v1.3.0; it now tracks it, shipped with zero
+  finding movement across an 8-repo re-scan.
+- **Cross-module taint (v1.3.2), reproducible.** Attacker input
+  flowing *across files* — request handler → `from app.dao import X;
+  X.create(...)` → `%`-formatted `cur.execute()` in the imported
+  module — is followed end-to-end (bag aliasing + `ClassName.static
+  method` resolution + absolute-package-import resolution). On the
+  deliberately-vulnerable `anxolerd/dvpwa` repo this exact SQLi is
+  reported; Semgrep CE `p/security-audit` returns zero findings on
+  the same code. This case is a committed regression test (see
+  methodology) — Semgrep's own docs note CE is limited to
+  single-file analysis; we make no claim about Semgrep Pro, CodeQL,
+  or other tools we did not run.
 
 ## Examples
 
@@ -192,7 +198,7 @@ into `.github/workflows/`.
 
 ## Using heatcheck without GitHub Actions
 
-The scanner is a single static binary; the GitHub Action is just a
+The scanner is a single standalone CLI binary; the GitHub Action is just a
 wrapper that adds PR annotations and a workflow summary. Same binary
 ships through three channels — pick whichever your CI prefers:
 
