@@ -51,7 +51,7 @@ Violations show up as:
 |-------|---------|-------------|
 | `paths` | `.` | Space-separated paths to scan. Heatcheck skips dotdirs (`.git`, `.venv`, `__pycache__`, ...) automatically. Paths cannot contain spaces. |
 | `fail-on-violations` | `true` | Set to `false` to make the action advisory (always rc=0). |
-| `heatcheck-version` | (action ref) | Release tag whose binary to download. Defaults to the action's own ref — `uses: ...@v1.3.3` downloads the `v1.3.3` binary. Override only to pin the binary independently of the wrapper. |
+| `heatcheck-version` | (action ref) | Release tag whose binary to download. Defaults to the action's own ref — `uses: ...@v1.3.4` downloads the `v1.3.4` binary. Override only to pin the binary independently of the wrapper. |
 | `python-version` | `3.11` | Python version on PATH (heatcheck calls CPython's `ast` module). |
 | `upload-report` | `false` | Upload `.heatcheck/report.html` as a workflow artifact for browsing. |
 | `timeout-seconds` | `600` | Per-run timeout for the heatcheck binary. |
@@ -85,45 +85,28 @@ Violations show up as:
 ## Why heatcheck
 
 heatcheck is **taint-gated**: it reports only when provenance analysis
-shows untrusted input reaching a sink that requires a sanitized value.
-That contrasts with pattern/audit rules — Bandit and many community
-audit rulesets (and the specific ruleset we measured against, Semgrep
-Community Edition `p/security-audit`) flag a call *shape* whether or
-not attacker-controlled data actually reaches it. (Semgrep also has a
-taint mode and CodeQL ships taint-style Python queries; this section
-is scoped to what we actually ran, not all SAST.)
+shows untrusted input reaching a sink that requires a sanitized value —
+not when a call merely *looks* dangerous. Out of the box, no custom
+rule writing:
 
-The points below are from an internal OSS field campaign; the
-reproducible artifacts and exact scope are in
-[docs/methodology.md](docs/methodology.md):
+| Capability | Bandit | Semgrep CE `p/security-audit` | heatcheck |
+|---|---|---|---|
+| Taint-gated reporting (not pattern/audit) | ✗ | ✗ | ✓ |
+| Cross-file taint | ✗ | ✗ ¹ | ✓ ² |
+| MCP decorator parameter sources | ✗ | ✗ | ✓ |
+| SQLAlchemy Core `.execute()` FP narrowed | ✗ | ✗ | ✓ ³ |
 
-- **Precision over advisory volume.** Across the campaign targets,
-  Semgrep CE `p/security-audit` produced large numbers of
-  `avoid-pickle` / `avoid-dill` / `avoid-shelve` findings on internal,
-  non-attacker-controlled serialization. heatcheck taint-gates those
-  and stays silent — you triage reachable findings, not pattern hits.
-- **MCP source modeling.** heatcheck treats MCP server tool-decorator
-  parameters (`@mcp.tool()` and friends) as attacker-controlled. We
-  found no MCP tool-parameter *source modeling* in Bandit, CodeQL's
-  documented Python built-in queries, or Semgrep CE `p/security-audit`
-  during the campaign — a real LLM-agent attack surface those did not
-  model.
-- **Request-bag recall (v1.3.0).** The aliased-bag handler shape —
-  `data = request.form` (or `await request.post()`), then `data["k"]`
-  to a sink — is a very common real-world pattern that was a blind
-  spot for heatcheck pre-v1.3.0; it now tracks it, shipped with zero
-  finding movement across an 8-repo re-scan.
-- **Cross-module taint (v1.3.3), reproducible.** Attacker input
-  flowing *across files* — request handler → `from app.dao import X;
-  X.create(...)` → `%`-formatted `cur.execute()` in the imported
-  module — is followed end-to-end (bag aliasing + `ClassName.static
-  method` resolution + absolute-package-import resolution). On the
-  deliberately-vulnerable `anxolerd/dvpwa` repo this exact SQLi is
-  reported; Semgrep CE `p/security-audit` returns zero findings on
-  the same code. This case is a committed regression test (see
-  methodology) — Semgrep's own docs note CE is limited to
-  single-file analysis; we make no claim about Semgrep Pro, CodeQL,
-  or other tools we did not run.
+¹ Per Semgrep's docs, Community Edition analysis is single-file.
+² Cross-module: request handler → `from app.dao import X; X.create(...)`
+→ `%`-formatted `cur.execute()` in the imported module, followed
+end-to-end (v1.3.3). ³ `.execute(f"…")` on a SQLAlchemy Core
+connection is no longer flagged when the bound value is safe (v1.3.3).
+
+Columns reflect only Bandit and Semgrep CE `p/security-audit` exactly
+as run in our internal OSS field campaign — **not** Semgrep Pro,
+CodeQL, or Semgrep's taint mode. Reproducible artifacts, exact scope,
+and the committed `anxolerd/dvpwa` cross-module SQLi regression test
+are in [docs/methodology.md](docs/methodology.md).
 
 ## Examples
 
@@ -159,10 +142,10 @@ blocking PRs until the backlog is cleaned up.
 
 ```yaml
 - uses: actions/checkout@v6
-- uses: nchantarotwong/heatcheck-action@v1.3.3   # immutable patch version
+- uses: nchantarotwong/heatcheck-action@v1.3.4   # immutable patch version
 ```
 
-Pin to the exact patch version (e.g. `@v1.3.3`) instead of the floating
+Pin to the exact patch version (e.g. `@v1.3.4`) instead of the floating
 major (`@v1`) when you need byte-identical scan results across re-runs.
 
 ### Upload the HTML report as an artifact
@@ -204,9 +187,9 @@ ships through three channels — pick whichever your CI prefers:
 
 | Channel | Pin like | When to use |
 |---------|----------|-------------|
-| **Container** | `ghcr.io/nchantarotwong/heatcheck:v1.3.3` | GitLab, Jenkins, Azure DevOps, Buildkite, any container-capable CI. Pinnable by digest for supply-chain review. |
+| **Container** | `ghcr.io/nchantarotwong/heatcheck:v1.3.4` | GitLab, Jenkins, Azure DevOps, Buildkite, any container-capable CI. Pinnable by digest for supply-chain review. |
 | **Binary release** | `heatcheck-{linux,darwin}-{x86_64,arm64}` from the [Releases page](https://github.com/nchantarotwong/heatcheck-action/releases) | CIs without container support, or air-gapped builds where you mirror the asset to internal storage. |
-| **This Action** | `nchantarotwong/heatcheck-action@v1.3.3` | GitHub Actions (you're reading its docs). |
+| **This Action** | `nchantarotwong/heatcheck-action@v1.3.4` | GitHub Actions (you're reading its docs). |
 
 Quick container example:
 
@@ -236,7 +219,7 @@ action:
 2. Sets up Python via `actions/setup-python` (heatcheck calls
    CPython's `ast` module for parsing).
 3. Resolves the heatcheck-action release tag from the action's own
-   ref (e.g. `@v1.3.3` → `v1.3.3`).
+   ref (e.g. `@v1.3.4` → `v1.3.4`).
 4. Downloads `heatcheck-{linux|darwin}-{x86_64|arm64}` and its
    `.sha256` from the GitHub Release.
 5. Verifies the SHA256 checksum.
