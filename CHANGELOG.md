@@ -11,6 +11,34 @@ Pin to a floating `@v1` for auto-bumps within v1.x, or an immutable
 
 ## [Unreleased]
 
+## [1.3.1] - 2026-05-16
+
+### Added
+- **Cross-module `ClassName.staticmethod()` taint resolution.** Calls
+  like `Student.create(data['k'])` where `Student` is defined in the
+  same module or a dir-relative import now step into the method body
+  with caller argument tags. `collect_functions` previously skipped
+  class bodies entirely, so static/class methods were never resolved
+  for interprocedural analysis — even though the call-site dispatch
+  already computed the right key. Closes the same-module and
+  dir-relative cross-file half of the cross-module gap (e.g. the
+  `request.post()` → `Cls.create(data['k'])` → `%`-format
+  `cur.execute()` SQLi shape).
+
+### Changed
+- **Scanner** rebuilt against Heat `768b93c`.
+- Regression corpus: the cross-module SQLi case is now a hard GUARD
+  (was a forward-looking xfail); a new xfail isolates the remaining
+  absolute-package-import resolution gap.
+
+### Known limitation
+- Absolute *package* imports (`from myapp.models import X` resolved
+  against the package root — the common real-world layout) are still
+  resolved dir-relative and may not locate the target module, so
+  cross-module taint across that import style is not yet caught.
+  Tracked; the broad "cross-module" capability is intentionally not
+  yet claimed in the README until this lands.
+
 ## [1.3.0] - 2026-05-15
 
 ### Added
