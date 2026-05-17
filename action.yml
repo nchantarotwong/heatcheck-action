@@ -1,5 +1,5 @@
 name: 'heatcheck-action'
-description: 'Catch the injection bugs LLMs ship past green tests — static taint analysis for Python.'
+description: 'Catch the injection bugs LLMs ship past green tests — static taint analysis for Python and Go.'
 author: 'Nels Chantarotwong'
 branding:
   icon: 'shield'

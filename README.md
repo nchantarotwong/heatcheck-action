@@ -5,14 +5,23 @@
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
 
 > Block the injection bugs LLMs ship past green tests — static taint
-> analysis for Python, covering SQLi, command injection, SSRF, path
-> traversal, XXE, and template injection.
+> analysis for Python and Go, covering SQLi, command injection, SSRF,
+> path traversal, XXE, and template injection.
 
-heatcheck walks a Python project's AST, traces provenance through
+heatcheck walks a project's AST, traces provenance through
 assignments, returns, and tuple-unpacks, and reports cases where
 attacker-controlled input reaches a sink that requires a sanitized
 value. The sink catalog is prioritized for the injection patterns we
-see in AI-assisted Python — not ported from a generic Python linter.
+see in AI-assisted code — not ported from a generic linter.
+
+**Python** is the primary surface (the full sink catalog: HC-001…HC-014
+across Flask, FastAPI, Django, SQLAlchemy, requests, MCP, …).
+**Go** runs through the *same* taint engine — six sinks
+(HC-001/002/004/005/006/007), type-driven via a bundled `go/types`
+bridge, with taint resolved interprocedurally through helper
+functions, value/pointer receiver methods, and across packages.
+Requires the `go` toolchain on the runner — GitHub-hosted runners
+include it; see [Go support](#go-support).
 
 > **Not on GitHub Actions?** heatcheck also ships as a container
 > (`ghcr.io/nchantarotwong/heatcheck`) and as a standalone binary —
@@ -81,6 +90,55 @@ Violations show up as:
 | HC-012 | TLS verification disabled | `requests.get(url, verify=False)` |
 | HC-013 | Weak credential hash | `hashlib.md5(request.form["password"])` |
 | HC-014 | Mass assignment | `User(**request.json)` |
+
+The table above is the **Python** catalog. See [Go support](#go-support)
+for the Go coverage.
+
+## Go support
+
+The same interprocedural taint engine analyzes Go — not a separate
+Go linter, the *same* engine over a shared AST vocabulary (the
+substrate property). Go is **type-driven**, not pattern-matched: a
+bundled `go/types` bridge resolves real types.
+
+```go
+func handler(w http.ResponseWriter, r *http.Request) {
+    id := r.URL.Query().Get("id")                       // @user_input
+    db.Query("SELECT * FROM users WHERE id = " + id)    // HC-005
+}
+```
+
+Recognized Go sinks (each CI-guarded by fixtures):
+
+| Code | Sink | Go surface |
+|------|------|------------|
+| HC-001 | Path traversal | `os.Open` / `os.ReadFile` / `os.WriteFile` / `http.ServeFile` (`filepath.Base` launders) |
+| HC-002 | Command injection | `exec.Command` / `exec.CommandContext` (tainted program, or shell `-c` payload) |
+| HC-004 | Unsafe deserialize | `encoding/gob` `Decode` |
+| HC-005 | SQL injection | `database/sql` `Query` / `QueryRow` / `Exec` + `*Context` + prepared-stmt `Prepare*` |
+| HC-006 | SSRF | `net/http` `Get` / `NewRequest` without allowlist |
+| HC-007 | Template injection | `html/template` bypass conversions (`template.HTML` casts) |
+
+Source: a parameter typed `*net/http.Request`. Taint resolves
+**interprocedurally** through helper functions, **value- and
+pointer-receiver methods**, and **across packages** — Go modules
+(`go.mod`, via `go list`) and loose multi-file inputs alike, with
+violations attributed to the defining file. SQL precision is
+type-driven: parameterized queries (`$1` placeholders) are clean,
+string-concat / `fmt.Sprintf` queries are flagged.
+
+This is a focused catalog (6 sinks) versus Python's 14 — the same
+engine, deliberately scoped to the high-signal Go classes rather
+than ported broad-and-shallow.
+
+**Runner requirement:** the Go bridge is built on the runner, so the
+`go` toolchain must be on `PATH`. GitHub-hosted `ubuntu-*` and
+`macos-*` runners ship Go preinstalled — no setup step needed. On a
+self-hosted or minimal runner without Go, add an `actions/setup-go`
+step before this action; a `.go` scan with no toolchain fails
+**loud** (`could not analyze Go: bridge unavailable`) — it never
+silently passes Go code as clean. Python scanning is unaffected
+either way.
 
 ## Why heatcheck
 
@@ -217,7 +275,9 @@ action:
 
 1. Validates inputs + OS / arch.
 2. Sets up Python via `actions/setup-python` (heatcheck calls
-   CPython's `ast` module for parsing).
+   CPython's `ast` module to parse Python). Go uses the runner's
+   preinstalled `go` toolchain — see [Go support](#go-support); no
+   setup step is added for it.
 3. Resolves the heatcheck-action release tag from the action's own
    ref (e.g. `@v1.3.4` → `v1.3.4`).
 4. Downloads `heatcheck-{linux|darwin}-{x86_64|arm64}` and its
