@@ -61,9 +61,20 @@ Violations show up as:
 | `paths` | `.` | Space-separated paths to scan. Heatcheck skips dotdirs (`.git`, `.venv`, `__pycache__`, ...) automatically. Paths cannot contain spaces. |
 | `fail-on-violations` | `true` | Set to `false` to make the action advisory (always rc=0). |
 | `heatcheck-version` | (action ref) | Release tag whose binary to download. Defaults to the action's own ref — `uses: ...@v1.3.4` downloads the `v1.3.4` binary. Override only to pin the binary independently of the wrapper. |
-| `python-version` | `3.11` | Python version on PATH (heatcheck calls CPython's `ast` module). |
+| `python-version` | `3.11` | Python toolchain for **Python** scanning — heatcheck shells out to this CPython's `ast` module to parse `.py` files. Ignored by Go-only scans. There is no `go-version` input by design (see below). |
 | `upload-report` | `false` | Upload `.heatcheck/report.html` as a workflow artifact for browsing. |
 | `timeout-seconds` | `600` | Per-run timeout for the heatcheck binary. |
+
+**No `go-version` input — Go uses the runner's `go` toolchain.**
+`python-version` exists because the action provisions Python (via
+`actions/setup-python`) for the `.py` AST bridge. Go is *not*
+provisioned: GitHub-hosted `ubuntu-*` / `macos-*` runners already
+ship `go`, and the action deliberately adds no setup-go step so
+pure-Python users don't pay for a toolchain they don't use. A
+Go-only scan does not need Python; a Python or mixed scan does.
+Self-hosted runners without `go` must add their own
+`actions/setup-go` for Go scanning — a `.go` scan with no `go`
+fails loud, never a silent clean. See [Go support](#go-support).
 
 ## Outputs
 
