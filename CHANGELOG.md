@@ -11,6 +11,52 @@ Pin to a floating `@v1` for auto-bumps within v1.x, or an immutable
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-05-17
+
+### Added
+- **Go is now a supported language.** heatcheck analyzes `.go`
+  files alongside Python — the *same* interprocedural taint
+  engine, type-driven via `go/types`. Catches SQL injection
+  (HC-005), command injection (HC-002), path traversal (HC-001),
+  SSRF (HC-006), SSTI/XSS via `html/template` bypass conversions
+  (HC-007), and unsafe `encoding/gob` deserialization (HC-004),
+  with `path/filepath.Base` recognized as a path launderer. Taint
+  resolves through local helper functions, receiver methods
+  (pointer/value), and across packages within a Go module
+  (`go list`-driven resolution). Requires the Go toolchain on
+  PATH for Go scans; its absence fails loud, never a silent
+  clean. Pass a `.go` file explicitly — directory scans stay
+  Python-only for now.
+- **MCP `fix_verify` verb.** Applies the mechanical fixes, then
+  re-scans the result and reports any fix that didn't clear its
+  finding plus any regression the rewrite introduced — the
+  closed-loop check detection-only tools can't make. Joins
+  `scan` / `scan_path` / `explain` / `suggest_fix` /
+  `apply_fixes`.
+- **`--report PATH`.** Write the HTML report to an explicit path
+  instead of `.heatcheck/report.html`, so concurrent runs (an
+  agent driving heatcheck-MCP from two editors in one repo,
+  parallel CI / pre-commit) don't collide on a single file.
+  `--no-report` still takes precedence; default behavior is
+  unchanged when the flag is absent.
+
+### Fixed
+- **Concurrency-safe AST bridge.** The Python AST bridge was
+  written to a fixed `/tmp` path that every invocation rewrote
+  then `python3`-exec'd. Concurrent heatcheck processes could
+  race — one truncating the file while another exec'd it →
+  corrupt bridge → a clean file spuriously flagged or a real
+  finding missed. Each process now uses a per-process bridge
+  path. Affects any concurrent use (agents/MCP, parallel
+  pre-commit); sequential scans were never affected.
+
+### Changed
+- **Scanner** rebuilt against Heat `89fc10d`. Python scan
+  findings are **byte-identical** to v1.4.1 — every Go / MCP /
+  CLI addition above is additive and the Python path is
+  unchanged (verified zero-regression across the suite). The
+  binary version is stamped from the release tag (since v1.4.1).
+
 ## [1.4.1] - 2026-05-16
 
 ### Fixed
