@@ -11,6 +11,39 @@ Pin to a floating `@v1` for auto-bumps within v1.x, or an immutable
 
 ## [Unreleased]
 
+## [1.5.1] - 2026-05-17
+
+### Fixed
+- **Go analysis now works in the distributed binary.** The Go
+  bridge source is **embedded in the binary** instead of loaded
+  relative to the working directory, so Go scanning works in the
+  standalone binary, the GitHub Action, and anywhere the binary
+  runs — not just inside a source checkout. This makes the v1.5.0
+  Go feature actually usable; it was non-functional for every real
+  consumer in v1.5.0 (failed loud `bridge unavailable`). **Python
+  scanning is byte-identical to v1.5.0 / v1.4.1 — unchanged.** A
+  CI guard now asserts the embedded bridge is byte-identical to
+  its source and scans correctly from a non-checkout directory, so
+  this class of defect cannot regress.
+
+### Notes
+- Go scanning requires the **`go` toolchain on the runner**.
+  GitHub-hosted `ubuntu-*` / `macos-*` runners ship Go — no setup
+  step needed; the Action adds none. Self-hosted / minimal runners
+  must provide `go` (e.g. an `actions/setup-go` step). Without it,
+  a `.go` scan fails loud — never a silent clean. The **container
+  image (`ghcr.io/.../heatcheck`) is Python-only** (no `go`
+  toolchain in the image); use the standalone binary on a Go-
+  enabled host for Go. See the README "Go support" section and
+  `docs/non-github-actions.md`.
+- Go's recognized sinks: HC-001 path traversal, HC-002 command
+  injection, HC-004 unsafe `gob` deserialize, HC-005 SQL
+  injection, HC-006 SSRF, HC-007 `html/template` injection —
+  type-driven, interprocedural, cross-package. Documented
+  accurately in the README (v1.5.0 docs did not mention Go).
+- Scanner rebuilt against Heat `e5460e1`; Python findings
+  byte-identical to v1.5.0 / v1.4.1.
+
 ## [1.5.0] - 2026-05-17
 
 ### Added
@@ -56,6 +89,16 @@ Pin to a floating `@v1` for auto-bumps within v1.x, or an immutable
   CLI addition above is additive and the Python path is
   unchanged (verified zero-regression across the suite). The
   binary version is stamped from the release tag (since v1.4.1).
+
+### Known issues
+- **Go analysis is non-functional in this build** (fixed in
+  1.5.1). The Go bridge source was loaded relative to the working
+  directory rather than embedded in the binary, so the standalone
+  binary, GitHub Action, and container all fail loud with
+  `could not analyze Go: bridge unavailable` for any `.go` scan.
+  It fails **loud, never silent** — **Python scanning is
+  unaffected and byte-identical to v1.4.1**. Upgrade to **1.5.1**
+  for working Go support; Python-only users are not impacted.
 
 ## [1.4.1] - 2026-05-16
 

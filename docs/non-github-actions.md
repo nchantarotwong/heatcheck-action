@@ -38,6 +38,17 @@ docker run --rm -v "$PWD:/src" \
 The image is `linux/amd64` + `linux/arm64`. Base is `debian:bookworm-slim`
 (glibc 2.36, Python 3.11).
 
+> **Language support — container is Python-only.** heatcheck also
+> analyzes Go (`net/http` → `database/sql` SQL injection; see the
+> [Go support](../README.md#go-support) section), but the Go bridge
+> is compiled on-host at scan time and the published image does
+> **not** ship the `go` toolchain — so the container scans Python
+> only. For Go, use the [direct binary](#direct-binary-download) on
+> a host that has `go` on `PATH`, or the GitHub Action on a
+> hosted runner (which ships Go). A `.go` file scanned via the
+> container fails **loud** (`bridge unavailable`) — it is never
+> silently passed as clean. Python scanning is unaffected.
+
 ### Exit codes
 
 | Code | Meaning |
@@ -78,9 +89,17 @@ chmod +x heatcheck
 ./heatcheck --version
 ```
 
-heatcheck needs **Python 3.x on PATH** at runtime — it shells out to
-CPython's `ast` module for parsing. Any 3.x will do (3.11 matches the
-action wrapper's pin).
+heatcheck needs **Python 3.x on PATH** at runtime for Python scanning
+— it shells out to CPython's `ast` module for parsing. Any 3.x will
+do (3.11 matches the action wrapper's pin).
+
+For **Go** scanning, the binary additionally needs the **`go`
+toolchain on PATH**. The Go bridge (a `go/types` program) is
+embedded in the binary and compiled on the first `.go` scan — no
+source tree or extra files, but `go` must be installed. Without it a
+`.go` scan fails loud (`bridge unavailable`); Python is unaffected.
+This is the recommended channel for Go (the container ships no Go
+toolchain).
 
 ## SARIF output
 
@@ -239,7 +258,10 @@ repos:
 `pass_filenames: false` is intentional — heatcheck reasons across
 files (provenance tracking) so it needs the whole tree, not just the
 staged subset. The `types: [python]` clause skips the hook entirely
-when no Python files changed.
+when no Python files changed — and is correct here: this hook uses
+the container image, which scans Python only (no `go` toolchain in
+the image). To also lint Go locally, run the direct binary on a host
+with `go` installed instead of the container.
 
 For one-shot local runs without pre-commit:
 
