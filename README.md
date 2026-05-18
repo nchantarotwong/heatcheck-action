@@ -72,6 +72,14 @@ Violations show up as:
 | `violations` | Number of violations across all scanned files. `-1` on internal failure (no JSON produced). |
 | `json-path` | Path to the raw JSON report on the runner filesystem. Use it in downstream steps that need to parse violations programmatically. |
 
+The JSON report has `healthy` (bool), `files_analyzed`, `violations`,
+`parse_errors`, and `skipped` (Go inputs excluded from the active
+build — build tag / cgo). **An empty `violations` array only means
+"clean" when `healthy` is `true`** — check `healthy`, not just the
+count: a run that failed to analyze inputs, or where every input was
+build-excluded, reports `healthy: false` with empty `violations`
+(and the action exits non-zero).
+
 ## What heatcheck catches
 
 | Code | Sink | Example |
@@ -126,6 +134,19 @@ pointer-receiver methods**, and **across packages** — Go modules
 violations attributed to the defining file. SQL precision is
 type-driven: parameterized queries (`$1` placeholders) are clean,
 string-concat / `fmt.Sprintf` queries are flagged.
+
+Directory and whole-repo scans include `.go` automatically — point
+the action at a path and Go and Python are analyzed in one pass (Go
+is type-checked per package via `go list`, so real multi-package
+modules scan correctly, not just single files).
+
+Files Go itself excludes from the active build — behind a build tag
+or cgo-only — are reported as **skipped**: not analyzed, not a false
+failure. Skipped files are visible in text output, in the JSON
+`skipped` array, and as SARIF execution notifications, and are never
+silently treated as clean — a scan whose inputs were *all*
+build-excluded analyzed nothing and exits non-zero (rc 3), so a CI
+gate cannot read "everything skipped" as "code is clean".
 
 This is a focused catalog (6 sinks) versus Python's 14 — the same
 engine, deliberately scoped to the high-signal Go classes rather

@@ -56,11 +56,15 @@ The image is `linux/amd64` + `linux/arm64`. Base is `debian:bookworm-slim`
 | `0` | Clean scan, no violations |
 | `1` | Violations found |
 | `2` | Usage / argument error |
+| `3` | No violations, but nothing could be conclusively analyzed — one or more inputs failed (parse error, missing input, bridge failure) **or every requested input was build-excluded** (Go build tag / cgo). Deliberately distinct from `0` so an "analyzed nothing" run can never read as "clean". |
 | `64` | Internal scanner error |
 
 Most CIs fail the job on any non-zero exit — that's the default
-behavior. To make heatcheck advisory, run with `|| true` or check
-exit code 0/1 explicitly.
+behavior. To make heatcheck advisory, run with `|| true`. If you
+branch on the exit code explicitly, treat **`3` as not-clean**
+(not just `0` vs `1`): a scan that analyzed nothing — e.g. a Go
+tree where every file is behind a build tag — exits `3`, never a
+false `0`.
 
 ## Direct binary download
 

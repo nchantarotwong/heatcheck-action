@@ -11,6 +11,42 @@ Pin to a floating `@v1` for auto-bumps within v1.x, or an immutable
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-05-18
+
+### Added
+- **Go scanning now covers directories and whole repos.** Directory
+  and repository scans include `.go` automatically (previously a
+  directory scan analyzed Python only and silently skipped Go). Go
+  is type-checked per package via `go list`, so real multi-package
+  modules scan correctly — large repositories complete instead of
+  timing out.
+- **`skipped` in the JSON report.** Go files Go itself excludes from
+  the active build (build tag / cgo-only) are reported as *skipped*
+  — listed in the JSON `skipped` array, as SARIF execution
+  notifications, and in text/HTML output — instead of being
+  misreported as analysis failures or silently dropped.
+
+### Fixed
+- **A scan that analyzed nothing can no longer read as clean.** When
+  every requested input is build-excluded (nothing was actually
+  analyzed), the scan now exits `3` with `healthy: false` in all
+  output modes (JSON, SARIF, text, HTML report) — previously this
+  could surface as `healthy: true` / exit `0`, a false "clean" for
+  CI consumers. Build-excluded files alongside analyzed files remain
+  informational (listed, do not fail the run).
+- Build-tag/cgo-gated Go files are no longer misclassified as bridge
+  failures on real repositories (eliminated the spurious analysis
+  errors that affected essentially every Go repo using build tags).
+
+### Notes
+- **Python scanning is byte-identical to v1.5.1 / v1.5.0 / v1.4.1 —
+  unchanged.** All changes are Go-path and output-reporting only.
+- Go scanning still requires the **`go` toolchain on the runner**
+  (GitHub-hosted `ubuntu-*` / `macos-*` ship it; the container image
+  remains Python-only).
+- If you branch on the exit code, treat **`3` as not-clean** (not
+  just `0`/`1`): see [docs/non-github-actions.md](docs/non-github-actions.md#exit-codes).
+
 ## [1.5.1] - 2026-05-17
 
 ### Fixed
