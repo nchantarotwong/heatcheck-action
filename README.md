@@ -268,6 +268,7 @@ ships through three channels — pick whichever your CI prefers:
 |---------|----------|-------------|
 | **Container** | `ghcr.io/nchantarotwong/heatcheck:v1.3.4` | GitLab, Jenkins, Azure DevOps, Buildkite, any container-capable CI. Pinnable by digest for supply-chain review. |
 | **Binary release** | `heatcheck-{linux,darwin}-{x86_64,arm64}` from the [Releases page](https://github.com/nchantarotwong/heatcheck-action/releases) | CIs without container support, or air-gapped builds where you mirror the asset to internal storage. |
+| **macOS installer** | `heatcheck-darwin-arm64.pkg` from the [Releases page](https://github.com/nchantarotwong/heatcheck-action/releases) | Local use on a Mac — signed, notarized, and stapled, so it installs `heatcheck` to `/usr/local/bin` with no Gatekeeper warning. (The bare `darwin` binary above is fine for `curl`/CI; the `.pkg` is for humans downloading via a browser.) |
 | **This Action** | `nchantarotwong/heatcheck-action@v1.3.4` | GitHub Actions (you're reading its docs). |
 
 Quick container example:

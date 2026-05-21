@@ -169,18 +169,129 @@ jobs:
             2>&1 | grep -vE 'warning: overriding|warning generated|^$' || true
           test -x "../out/${ASSET}"
 
+      # macOS signing + notarization. See docs/RELEASE_SIGNING.md for the
+      # one-time Apple cert provisioning + the repo secrets this consumes.
+      #
+      # Distribution shape (intentional — see PR discussion):
+      #   - the BARE binary (heatcheck-darwin-arm64) stays the asset the
+      #     GHA action + curl installers download. It's Developer-ID
+      #     signed + notarized so an online Gatekeeper check passes; a
+      #     bare Mach-O can't be stapled, but curl/CI downloads carry no
+      #     quarantine xattr so that path is friction-free regardless.
+      #   - an ADDITIONAL .pkg (heatcheck-darwin-arm64.pkg) is signed +
+      #     notarized + STAPLED for humans who download from the Releases
+      #     page in a browser (quarantined) — double-click installs to
+      #     /usr/local/bin, works fully offline, no Gatekeeper dance.
+      #
+      # Gated on secret presence: with no signing secrets the step ships
+      # the UNSIGNED bare binary and no .pkg, so releases keep working
+      # before the cert setup lands (and so forks without secrets build).
+      - name: Sign + notarize binary, build + staple .pkg (macOS)
+        if: runner.os == 'macOS'
+        env:
+          ASSET: ${{ matrix.asset }}
+          DISPATCH_TAG: ${{ inputs.release-tag }}
+          MACOS_CERT_P12_BASE64: ${{ secrets.MACOS_CERT_P12_BASE64 }}
+          MACOS_CERT_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
+          MACOS_INSTALLER_CERT_P12_BASE64: ${{ secrets.MACOS_INSTALLER_CERT_P12_BASE64 }}
+          MACOS_INSTALLER_CERT_PASSWORD: ${{ secrets.MACOS_INSTALLER_CERT_PASSWORD }}
+          MACOS_NOTARY_APPLE_ID: ${{ secrets.MACOS_NOTARY_APPLE_ID }}
+          MACOS_NOTARY_PASSWORD: ${{ secrets.MACOS_NOTARY_PASSWORD }}
+          MACOS_NOTARY_TEAM_ID: ${{ secrets.MACOS_NOTARY_TEAM_ID }}
+        run: |
+          set -euo pipefail
+          BIN="out/${ASSET}"
+
+          if [ -z "${MACOS_CERT_P12_BASE64:-}" ] || [ -z "${MACOS_NOTARY_APPLE_ID:-}" ]; then
+            echo "::warning::macOS signing secrets not set — shipping UNSIGNED ${ASSET}, no .pkg. See docs/RELEASE_SIGNING.md."
+            exit 0
+          fi
+
+          # --- Import both certs into an ephemeral keychain ---
+          KEYCHAIN="$RUNNER_TEMP/signing.keychain-db"
+          KCPW="$(openssl rand -base64 24)"
+          security create-keychain -p "$KCPW" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "$KCPW" "$KEYCHAIN"
+          echo "$MACOS_CERT_P12_BASE64" | base64 --decode > "$RUNNER_TEMP/app.p12"
+          security import "$RUNNER_TEMP/app.p12" -k "$KEYCHAIN" \
+            -P "$MACOS_CERT_PASSWORD" -T /usr/bin/codesign
+          echo "$MACOS_INSTALLER_CERT_P12_BASE64" | base64 --decode > "$RUNNER_TEMP/installer.p12"
+          security import "$RUNNER_TEMP/installer.p12" -k "$KEYCHAIN" \
+            -P "$MACOS_INSTALLER_CERT_PASSWORD" -T /usr/bin/productsign
+          # Allow codesign/productsign to use the imported keys without
+          # an interactive UI prompt (headless runner).
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$KCPW" "$KEYCHAIN" >/dev/null
+          # Prepend our keychain to the user search list so the signing
+          # tools find the identities.
+          security list-keychains -d user -s "$KEYCHAIN" \
+            $(security list-keychains -d user | sed 's/"//g')
+          rm -f "$RUNNER_TEMP/app.p12" "$RUNNER_TEMP/installer.p12"
+
+          # --- Sign the bare binary (prefix-match the identity so the
+          # team-specific common name isn't hardcoded; exactly one
+          # Developer ID Application identity is present). ---
+          codesign --force --options runtime --timestamp \
+            --sign "Developer ID Application" "$BIN"
+          codesign --verify --strict --verbose=2 "$BIN"
+
+          # --- Notarize the bare binary (submit a zip; can't staple a
+          # bare Mach-O, ticket lives online for the Gatekeeper check). ---
+          ditto -c -k --keepParent "$BIN" "$RUNNER_TEMP/bin.zip"
+          xcrun notarytool submit "$RUNNER_TEMP/bin.zip" \
+            --apple-id "$MACOS_NOTARY_APPLE_ID" \
+            --password "$MACOS_NOTARY_PASSWORD" \
+            --team-id "$MACOS_NOTARY_TEAM_ID" \
+            --wait
+
+          # --- Version for the .pkg (push → tag; dispatch → release-tag
+          # input; fall back to 0.0.0 for a preflight). ---
+          if [ "${GITHUB_EVENT_NAME}" = "push" ]; then
+            RAWTAG="${GITHUB_REF_NAME}"
+          else
+            RAWTAG="${DISPATCH_TAG:-}"
+          fi
+          VER="${RAWTAG#v}"; [ -n "${VER}" ] || VER="0.0.0"
+
+          # --- Build, sign, notarize, staple the .pkg. Payload installs
+          # the binary as /usr/local/bin/heatcheck. ---
+          PKGROOT="$RUNNER_TEMP/pkgroot/usr/local/bin"
+          mkdir -p "$PKGROOT"
+          cp "$BIN" "$PKGROOT/heatcheck"
+          chmod +x "$PKGROOT/heatcheck"
+          pkgbuild --root "$RUNNER_TEMP/pkgroot" \
+            --identifier com.heatcheck.cli \
+            --version "$VER" \
+            --install-location / \
+            "$RUNNER_TEMP/heatcheck-unsigned.pkg"
+          productsign --sign "Developer ID Installer" \
+            "$RUNNER_TEMP/heatcheck-unsigned.pkg" "out/${ASSET}.pkg"
+          xcrun notarytool submit "out/${ASSET}.pkg" \
+            --apple-id "$MACOS_NOTARY_APPLE_ID" \
+            --password "$MACOS_NOTARY_PASSWORD" \
+            --team-id "$MACOS_NOTARY_TEAM_ID" \
+            --wait
+          xcrun stapler staple "out/${ASSET}.pkg"
+          xcrun stapler validate "out/${ASSET}.pkg"
+          echo "Signed + notarized ${BIN}; built + stapled out/${ASSET}.pkg"
+
       - name: Compute SHA256
         env:
           ASSET: ${{ matrix.asset }}
         run: |
           set -euo pipefail
           cd out
-          if command -v sha256sum >/dev/null 2>&1; then
-            sha256sum "$ASSET" > "${ASSET}.sha256"
-          else
-            shasum -a 256 "$ASSET" > "${ASSET}.sha256"
-          fi
-          cat "${ASSET}.sha256"
+          # Hash the bare binary always, the .pkg only if signing produced
+          # one (macOS with secrets).
+          for f in "$ASSET" "${ASSET}.pkg"; do
+            [ -f "$f" ] || continue
+            if command -v sha256sum >/dev/null 2>&1; then
+              sha256sum "$f" > "${f}.sha256"
+            else
+              shasum -a 256 "$f" > "${f}.sha256"
+            fi
+            cat "${f}.sha256"
+          done
 
       - name: Upload as job artifact (for cross-job collection)
         uses: actions/upload-artifact@v7
@@ -190,6 +301,20 @@ jobs:
             out/${{ matrix.asset }}
             out/${{ matrix.asset }}.sha256
           if-no-files-found: error
+          retention-days: 7
+
+      # Separate, optional upload for the signed .pkg — only exists on a
+      # macOS build with signing secrets. if-no-files-found: ignore so
+      # Linux builds and unsigned macOS builds skip it silently.
+      - name: Upload .pkg artifact (macOS, signed builds only)
+        if: runner.os == 'macOS'
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ matrix.asset }}-pkg
+          path: |
+            out/${{ matrix.asset }}.pkg
+            out/${{ matrix.asset }}.pkg.sha256
+          if-no-files-found: ignore
           retention-days: 7
 
   publish:
