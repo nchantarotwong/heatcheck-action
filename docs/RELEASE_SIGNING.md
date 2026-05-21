@@ -28,12 +28,37 @@ Why two artifacts:
   `heatcheck` to `/usr/local/bin` with zero Gatekeeper friction, online
   or offline. That's the artifact to hand a design partner.
 
+## Where each step runs
+
+The build and the signing both happen **in CI** — on the `macos-14`
+GitHub Actions runner, automatically, on every tagged release. You do
+not build or sign anything locally.
+
+The **only** local work is a one-time *minting* of the signing
+certificate, because a code-signing cert is bound to a private key that
+must originate on a machine you control, and Apple issues it through an
+interactive portal flow tied to your account. You mint it once on your
+Mac, export it as a `.p12`, and store it (base64) as a GitHub secret.
+From then on CI imports that secret and does all the actual signing
+itself — the cert is valid ~5 years and reused for every release.
+
+```
+  YOU, once, on your Mac           CI, every release (macos-14 runner)
+  ----------------------           -----------------------------------
+  generate CSR → get certs
+  export .p12 (cert + key)   ─────►  import .p12 from secret
+  base64 → GitHub secrets             codesign + notarize binary
+                                      pkgbuild + productsign + staple .pkg
+                                      upload signed assets
+```
+
 ## Prerequisites
 
 - A paid Apple Developer account ($99/yr).
-- macOS with Xcode command line tools (to export the certs locally).
+- A Mac (to mint the cert once via Keychain Access). The release
+  *builds* run on GitHub's macOS runners, not your machine.
 
-## One-time setup
+## One-time setup (local — minting the credential)
 
 ### 1. Create the two certificates
 
