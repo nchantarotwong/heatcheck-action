@@ -82,24 +82,42 @@ require that intermediate in the verifying Mac's trust store — modern
 macOS (12+) ships it, and the notarized + stapled `.pkg` embeds the
 full chain, so it's a non-issue for the install path partners use.
 
-Both certs are issued from a **Certificate Signing Request (CSR)** you
-generate on your Mac:
+Each cert is issued from a **Certificate Signing Request (CSR)** you
+generate on your Mac. **Apple enforces one CSR per certificate** — you
+cannot reuse a CSR (the portal rejects it with "The uploaded CSR file
+has already been used to generate another certificate"), so generate a
+**separate CSR for each** of the two certs.
+
+For each cert:
 
 1. Open **Keychain Access** → menu **Certificate Assistant → Request a
    Certificate From a Certificate Authority…**
-2. **User Email Address** = your Apple ID; **Common Name** = anything
-   descriptive; **CA Email Address** = *blank*; **Request is** =
-   **Saved to disk**.
+2. **User Email Address** = your Apple ID; **Common Name** = something
+   that tells the two apart (e.g. `… Developer ID Application` vs `…
+   Developer ID Installer`); **CA Email Address** = *blank*; **Request
+   is** = **Saved to disk**.
 3. Save the `.certSigningRequest` file.
 4. In the portal, upload that `.csr`, download the issued `.cer`, and
-   double-click it to install into your **login** keychain.
+   import it into your **login** keychain.
 
-You can reuse the **same CSR** for both cert requests — both issued
-certs pair with the one private key Keychain Access created, and
-`codesign` / `productsign` each select the cert they need by type. The
-private key stays in your keychain; that's what you export as the
-`.p12` next (which is why you must export the cert *with its private
-key* — see step 2).
+Importing reliably — double-clicking the `.cer` can fail with
+`-25294` (`errSecNoSuchKeychain`) even on a healthy setup; the explicit
+CLI import sidesteps that GUI quirk:
+
+```bash
+security import ~/Downloads/<the>.cer -k ~/Library/Keychains/login.keychain-db
+```
+
+Each CSR creates its own private key in your keychain, and each issued
+cert pairs with the key from its CSR. The private keys stay in your
+keychain; they're what you export as the `.p12` next (which is why you
+must export each cert *with its private key* — see step 2). After both
+imports, verify:
+
+```bash
+security find-identity -v -p codesigning | grep "Developer ID Application"
+security find-identity -v | grep "Developer ID Installer"
+```
 
 ### 2. Export each as a `.p12`
 
