@@ -11,6 +11,22 @@ Pin to a floating `@v1` for auto-bumps within v1.x, or an immutable
 
 ## [Unreleased]
 
+## [1.6.1] - 2026-05-21
+
+### Added
+- **macOS binaries are now Developer ID signed + notarized**, and a
+  signed + notarized + stapled `.pkg` installer
+  (`heatcheck-darwin-arm64.pkg`) is published alongside the bare
+  binary. Download the `.pkg` from the Releases page and double-click
+  to install `heatcheck` to `/usr/local/bin` with no Gatekeeper
+  warning — the friction-free path for local use on a Mac. The bare
+  `heatcheck-darwin-arm64` (what the Action and `curl` installs use)
+  keeps the same name and is now signed + notarized too. See
+  `docs/RELEASE_SIGNING.md`.
+
+Scanner behavior is byte-identical to 1.6.0 (Python and Go) — this
+release changes macOS packaging only.
+
 ## [1.6.0] - 2026-05-18
 
 ### Added
