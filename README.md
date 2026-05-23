@@ -4,9 +4,11 @@
 [![release](https://img.shields.io/github/v/release/nchantarotwong/heatcheck-action)](https://github.com/nchantarotwong/heatcheck-action/releases)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
 
-> Block the injection bugs LLMs ship past green tests — static taint
-> analysis for Python and Go, covering SQLi, command injection, SSRF,
-> path traversal, XXE, and template injection.
+> Stop AI agents shipping exploitable code.
+>
+> heatcheck traces untrusted data from source to sink and fails CI before
+> SQLi, command injection, SSRF, path traversal, XXE, or template
+> injection ships.
 
 heatcheck walks a project's AST, traces provenance through
 assignments, returns, and tuple-unpacks, and reports cases where
