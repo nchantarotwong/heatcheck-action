@@ -47,6 +47,10 @@ inputs:
       fails the build. Must be "true" or "false". Default: "true".
     default: 'true'
 
+  sarif-category:
+    description: 'Code Scanning category (SARIF automationDetails.id) so heatcheck''s alerts coexist with other SAST tools instead of overwriting them. Default: "heatcheck".'
+    default: 'heatcheck'
+
 outputs:
   sarif-path:
     description: 'Path to the generated SARIF file on the runner (empty if upload-sarif is false or generation failed).'
@@ -309,6 +313,7 @@ runs:
         HEATCHECK_SARIF: ${{ runner.temp }}/heatcheck.sarif
         HEATCHECK_PATHS: ${{ inputs.paths }}
         HEATCHECK_TIMEOUT: ${{ inputs.timeout-seconds }}
+        SARIF_CATEGORY: ${{ inputs.sarif-category }}
         GH_TOKEN: ${{ github.token }}
         GH_REPO: ${{ github.repository }}
         SHA: ${{ github.sha }}
@@ -359,6 +364,13 @@ runs:
         # so the blob is read from a file (jq --rawfile) and the body is sent
         # from a file (gh api --input), never via argv.
         tmp="${RUNNER_TEMP:-/tmp}"
+        # Namespace under a Code Scanning category so heatcheck coexists with
+        # other SARIF tools instead of clobbering their alerts. Tolerant — if
+        # jq is missing or the rewrite fails, fall back to the raw SARIF.
+        if command -v jq >/dev/null 2>&1 && [ -n "${SARIF_CATEGORY:-}" ]; then
+          jq --arg cat "${SARIF_CATEGORY}/" '.runs |= map(.automationDetails = ((.automationDetails // {}) + {id:$cat}))' "$HEATCHECK_SARIF" > "$tmp/heatcheck.sarif.cat" 2>/dev/null \
+            && mv "$tmp/heatcheck.sarif.cat" "$HEATCHECK_SARIF" || true
+        fi
         gzip -c "$HEATCHECK_SARIF" | base64 | tr -d '\n' > "$tmp/heatcheck.sarif.b64"
         jq -n --rawfile sarif "$tmp/heatcheck.sarif.b64" --arg cs "$SHA" --arg ref "$REF" \
           '{commit_sha:$cs, ref:$ref, sarif:$sarif, tool_name:"heatcheck"}' > "$tmp/heatcheck.sarif.body.json"

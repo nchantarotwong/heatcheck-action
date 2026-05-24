@@ -20,7 +20,9 @@ Pin to a floating `@v1` for auto-bumps within v1.x, or an immutable
   emits a warning and continues — it never fails the build. Grant
   `security-events: write` (see README Quickstart) to populate the Security tab.
   Not a breaking change: existing workflows keep passing; they just gain the
-  Security-tab integration once the permission is granted.
+  Security-tab integration once the permission is granted. A new
+  `sarif-category` input (default `heatcheck`) namespaces results so they
+  coexist with other SAST tools' Code Scanning alerts instead of overwriting them.
 
 ## [1.7.0] - 2026-05-24
 

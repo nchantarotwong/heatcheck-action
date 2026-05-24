@@ -115,7 +115,9 @@ surfaces natively in:
 - GitLab Ultimate's SAST widget (MR pipeline reports)
 - Azure DevOps SARIF SAST tasks
 - SonarQube / SonarCloud external-issue ingestion
-- GitHub Code Scanning (via `github/codeql-action/upload-sarif@v3`)
+- GitHub Code Scanning — **automatic** with the heatcheck GitHub Action
+  (`upload-sarif`, on by default); for non-GHA CI, upload it yourself via
+  `github/codeql-action/upload-sarif@v3` or the code-scanning REST API
 - Any tool that consumes SARIF (Defectdojo, Semgrep AppSec Platform,
   etc.)
 

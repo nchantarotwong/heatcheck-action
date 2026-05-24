@@ -77,6 +77,7 @@ Violations show up as:
 | `upload-report` | `false` | Upload `.heatcheck/report.html` as a workflow artifact for browsing. |
 | `timeout-seconds` | `600` | Per-run timeout for the heatcheck binary. |
 | `upload-sarif` | `true` | Upload results to GitHub Code Scanning (Security tab) as SARIF. Tolerant — without `security-events: write`, or on a fork PR, it warns and continues (never fails the build). |
+| `sarif-category` | `heatcheck` | Code Scanning category (SARIF `automationDetails.id`) so heatcheck's alerts coexist with other SAST tools instead of overwriting them. |
 
 ## Outputs
 
