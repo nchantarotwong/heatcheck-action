@@ -57,7 +57,7 @@ RUN set -eux; \
 WORKDIR /src
 
 LABEL org.opencontainers.image.title="heatcheck" \
-      org.opencontainers.image.description="Static taint analysis for AI-generated Python — SQLi, command injection, SSRF, path traversal, XXE, template injection." \
+      org.opencontainers.image.description="Static taint analysis for AI-generated Python — SQLi, command/code injection, SSRF, path traversal, XXE, template injection; incl. untrusted model/LLM output flowing to a sink." \
       org.opencontainers.image.source="https://github.com/nchantarotwong/heatcheck-action" \
       org.opencontainers.image.documentation="https://github.com/nchantarotwong/heatcheck-action/blob/main/docs/non-github-actions.md" \
       org.opencontainers.image.licenses="Apache-2.0"

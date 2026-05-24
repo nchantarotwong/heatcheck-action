@@ -11,6 +11,29 @@ Pin to a floating `@v1` for auto-bumps within v1.x, or an immutable
 
 ## [Unreleased]
 
+## [1.7.0] - 2026-05-24
+
+### Added
+- **Model/LLM output is now a taint source.** heatcheck flags untrusted
+  model output flowing into a sink — the source class generic SAST
+  (Semgrep, CodeQL) doesn't model. Recognized sources: OpenAI/Azure
+  completion calls (`*.completions.create`, `*.responses.create`) and
+  response content (`*.choices[i].message.content` / `.delta.content`),
+  plus chat-history message content (`<x>.messages[i]["content"]` /
+  `.content`, including extracted after a comprehension over `.messages`).
+  A model-generated string reaching code execution, a shell, SQL, a path,
+  etc. is now caught — most commonly **HC-003 (code injection)**, e.g. an
+  agent runtime's `interpreter.computer.run(language, code)` fed from the
+  model. Precision held tight (content/text fields only — `role`/`type`
+  stay clean; sandboxed runners are not flagged): validated on a
+  3,500+-file agent corpus with zero new false positives.
+
+### Fixed
+- **Cross-file duplicate findings.** A sink inside an imported helper,
+  re-derived from each caller's interprocedural pass, was reported once
+  per caller. Byte-identical findings (file/line/column/code) are now
+  collapsed to a single result.
+
 ## [1.6.1] - 2026-05-21
 
 ### Added

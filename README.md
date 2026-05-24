@@ -5,14 +5,20 @@
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
 
 > Block the injection bugs LLMs ship past green tests — static taint
-> analysis for Python and Go, covering SQLi, command injection, SSRF,
-> path traversal, XXE, and template injection.
+> analysis for Python and Go, covering SQLi, command injection, code
+> injection (eval/exec), SSRF, path traversal, XXE, and template
+> injection.
 
 heatcheck walks a project's AST, traces provenance through
 assignments, returns, and tuple-unpacks, and reports cases where
-attacker-controlled input reaches a sink that requires a sanitized
-value. The sink catalog is prioritized for the injection patterns we
-see in AI-assisted code — not ported from a generic linter.
+attacker-controlled input — including untrusted **model/LLM output**
+(chat-completion content, chat-history `messages[i]["content"]`) —
+reaches a sink that requires a sanitized value. Treating model output
+as untrusted is the source class generic SAST (Semgrep, CodeQL) doesn't
+model: a model-generated string that flows into code execution, a
+shell, SQL, etc. is flagged. The sink catalog is prioritized for the
+injection patterns we see in AI-assisted code — not ported from a
+generic linter.
 
 **Python** is the primary surface (the full sink catalog: HC-001…HC-014
 across Flask, FastAPI, Django, SQLAlchemy, requests, MCP, …).

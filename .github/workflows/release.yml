@@ -33,7 +33,7 @@ on:
         default: ''
 
 env:
-  HEAT_REF_DEFAULT: '1b2274a6bcbd95da77bb16b90d93dbd269a0e772'
+  HEAT_REF_DEFAULT: '434d23bb6f8c4ce4c454cb463c9893ed023040cf'
 
 jobs:
   build:
