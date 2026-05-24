@@ -11,6 +11,8 @@ Pin to a floating `@v1` for auto-bumps within v1.x, or an immutable
 
 ## [Unreleased]
 
+## [1.8.0] - 2026-05-24
+
 ### Added
 - **GitHub Code Scanning integration (SARIF), on by default.** The action now
   uploads findings to the repo's Security tab as SARIF (`upload-sarif`, default
