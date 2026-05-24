@@ -333,7 +333,11 @@ runs:
         fi
         gen_rc=$?
         set -e
-        if [ "$gen_rc" != "0" ] || [ ! -s "$HEATCHECK_SARIF" ]; then
+        # heatcheck exit codes: 0=clean, 1=violations found (the main case to
+        # surface!), 3=nothing conclusively analyzed — all three still produce a
+        # valid SARIF report. Only 2/64 (internal error) or 124 (timeout), or an
+        # empty file, are real generation failures.
+        if [ "$gen_rc" = "2" ] || [ "$gen_rc" = "64" ] || [ "$gen_rc" = "124" ] || [ ! -s "$HEATCHECK_SARIF" ]; then
           warn "SARIF generation failed (rc=$gen_rc)."
           echo "path=" >> "$GITHUB_OUTPUT"
           exit 0
@@ -350,15 +354,22 @@ runs:
         # Upload via the REST API, tolerantly: a missing 'security-events:
         # write' permission (or any API error) WARNS and continues — it never
         # breaks the build.
-        b64="$(gzip -c "$HEATCHECK_SARIF" | base64 | tr -d '\n')"
+        # Build the request body in files. A large base64 SARIF passed as a
+        # command argument would hit ARG_MAX and silently skip a valid report,
+        # so the blob is read from a file (jq --rawfile) and the body is sent
+        # from a file (gh api --input), never via argv.
+        tmp="${RUNNER_TEMP:-/tmp}"
+        gzip -c "$HEATCHECK_SARIF" | base64 | tr -d '\n' > "$tmp/heatcheck.sarif.b64"
+        jq -n --rawfile sarif "$tmp/heatcheck.sarif.b64" --arg cs "$SHA" --arg ref "$REF" \
+          '{commit_sha:$cs, ref:$ref, sarif:$sarif, tool_name:"heatcheck"}' > "$tmp/heatcheck.sarif.body.json"
         set +e
         gh api --method POST "/repos/${GH_REPO}/code-scanning/sarifs" \
-          -f "commit_sha=${SHA}" -f "ref=${REF}" -f "sarif=${b64}" -f "tool_name=heatcheck" \
-          > /dev/null 2> "${RUNNER_TEMP:-/tmp}/sarif_upload_err"
+          --input "$tmp/heatcheck.sarif.body.json" \
+          > /dev/null 2> "$tmp/sarif_upload_err"
         up_rc=$?
         set -e
         if [ "$up_rc" != "0" ]; then
-          warn "$(head -c 240 "${RUNNER_TEMP:-/tmp}/sarif_upload_err" 2>/dev/null | tr '\n' ' '). Grant 'permissions: security-events: write' to populate the Security tab."
+          warn "$(head -c 240 "$tmp/sarif_upload_err" 2>/dev/null | tr '\n' ' '). Grant 'permissions: security-events: write' to populate the Security tab."
           exit 0
         fi
         printf '✅ heatcheck — uploaded SARIF to Code Scanning (Security tab).\n' >> "${GITHUB_STEP_SUMMARY:-/dev/null}"
