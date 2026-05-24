@@ -42,6 +42,9 @@ on: [push, pull_request]
 jobs:
   scan:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write   # surfaces findings in the Security tab
     steps:
       - uses: actions/checkout@v6
       - uses: nchantarotwong/heatcheck-action@v1
@@ -56,6 +59,9 @@ requests, MCP server decorators, and more.
 Violations show up as:
 
 - **Inline annotations** on the PR Files tab, one per violation.
+- **Code Scanning alerts** in the repo's Security tab — on by default when the
+  job grants `security-events: write` (see Quickstart). Tolerant: without the
+  permission, or on a fork PR, it warns and continues (never fails the build).
 - **A workflow summary** at the bottom of the run, grouped by sink code.
 - **Job failure** (rc=1) by default — set `fail-on-violations: false`
   to make heatcheck advisory.
@@ -70,6 +76,7 @@ Violations show up as:
 | `python-version` | `3.11` | Python version on PATH (heatcheck calls CPython's `ast` module). |
 | `upload-report` | `false` | Upload `.heatcheck/report.html` as a workflow artifact for browsing. |
 | `timeout-seconds` | `600` | Per-run timeout for the heatcheck binary. |
+| `upload-sarif` | `true` | Upload results to GitHub Code Scanning (Security tab) as SARIF. Tolerant — without `security-events: write`, or on a fork PR, it warns and continues (never fails the build). |
 
 ## Outputs
 
@@ -77,6 +84,7 @@ Violations show up as:
 |--------|-------------|
 | `violations` | Number of violations across all scanned files. `-1` on internal failure (no JSON produced). |
 | `json-path` | Path to the raw JSON report on the runner filesystem. Use it in downstream steps that need to parse violations programmatically. |
+| `sarif-path` | Path to the generated SARIF file on the runner (empty if `upload-sarif` is `false` or generation failed). |
 
 The JSON report has `healthy` (bool), `files_analyzed`, `violations`,
 `parse_errors`, and `skipped` (Go inputs excluded from the active

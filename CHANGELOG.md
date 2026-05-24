@@ -11,6 +11,17 @@ Pin to a floating `@v1` for auto-bumps within v1.x, or an immutable
 
 ## [Unreleased]
 
+### Added
+- **GitHub Code Scanning integration (SARIF), on by default.** The action now
+  uploads findings to the repo's Security tab as SARIF (`upload-sarif`, default
+  `true`), and exposes the generated file via a new `sarif-path` output. It is
+  **tolerant**: if the job lacks `permissions: security-events: write`, or the
+  run is a pull request from a fork (which GitHub blocks from uploading), it
+  emits a warning and continues — it never fails the build. Grant
+  `security-events: write` (see README Quickstart) to populate the Security tab.
+  Not a breaking change: existing workflows keep passing; they just gain the
+  Security-tab integration once the permission is granted.
+
 ## [1.7.0] - 2026-05-24
 
 ### Added
