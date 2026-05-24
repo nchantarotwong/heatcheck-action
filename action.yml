@@ -356,35 +356,32 @@ runs:
           exit 0
         fi
 
-        # The category rewrite and the upload body are both assembled with jq.
-        # Without it we can't build the request, so skip the upload tolerantly
-        # (the SARIF was still generated; never fail the build).
-        if ! command -v jq >/dev/null 2>&1; then
-          warn "jq not available on the runner — skipping Code Scanning upload."
+        # Build the upload request body with Python — already required by
+        # heatcheck (it shells out to CPython's ast module), so no jq
+        # dependency, guaranteed present, and correct JSON escaping. The script
+        # injects the Code Scanning category, gzip+base64-encodes the SARIF, and
+        # writes the body via files (no ARG_MAX limit on large reports).
+        # Tolerant: any failure warns and skips the upload — never fails build.
+        tmp="${RUNNER_TEMP:-/tmp}"
+        body="$tmp/heatcheck.sarif.body.json"
+        set +e
+        python "${{ github.action_path }}/scripts/sarif_body.py" \
+          --sarif "$HEATCHECK_SARIF" --out "$body" \
+          --commit-sha "$SHA" --ref "$REF" --category "${SARIF_CATEGORY:-}" \
+          2> "$tmp/sarif_body_err"
+        build_rc=$?
+        set -e
+        if [ "$build_rc" != "0" ] || [ ! -s "$body" ]; then
+          warn "could not build the SARIF upload body ($(head -c 200 "$tmp/sarif_body_err" 2>/dev/null | tr '\n' ' '))."
           exit 0
         fi
 
         # Upload via the REST API, tolerantly: a missing 'security-events:
         # write' permission (or any API error) WARNS and continues — it never
         # breaks the build.
-        # Build the request body in files. A large base64 SARIF passed as a
-        # command argument would hit ARG_MAX and silently skip a valid report,
-        # so the blob is read from a file (jq --rawfile) and the body is sent
-        # from a file (gh api --input), never via argv.
-        tmp="${RUNNER_TEMP:-/tmp}"
-        # Namespace under a Code Scanning category so heatcheck coexists with
-        # other SARIF tools instead of clobbering their alerts. Tolerant — if
-        # jq is missing or the rewrite fails, fall back to the raw SARIF.
-        if command -v jq >/dev/null 2>&1 && [ -n "${SARIF_CATEGORY:-}" ]; then
-          jq --arg cat "${SARIF_CATEGORY}/" '.runs |= map(.automationDetails = ((.automationDetails // {}) + {id:$cat}))' "$HEATCHECK_SARIF" > "$tmp/heatcheck.sarif.cat" 2>/dev/null \
-            && mv "$tmp/heatcheck.sarif.cat" "$HEATCHECK_SARIF" || true
-        fi
-        gzip -c "$HEATCHECK_SARIF" | base64 | tr -d '\n' > "$tmp/heatcheck.sarif.b64"
-        jq -n --rawfile sarif "$tmp/heatcheck.sarif.b64" --arg cs "$SHA" --arg ref "$REF" \
-          '{commit_sha:$cs, ref:$ref, sarif:$sarif, tool_name:"heatcheck"}' > "$tmp/heatcheck.sarif.body.json"
         set +e
         gh api --method POST "/repos/${GH_REPO}/code-scanning/sarifs" \
-          --input "$tmp/heatcheck.sarif.body.json" \
+          --input "$body" \
           > /dev/null 2> "$tmp/sarif_upload_err"
         up_rc=$?
         set -e
