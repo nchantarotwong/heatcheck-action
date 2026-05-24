@@ -356,6 +356,14 @@ runs:
           exit 0
         fi
 
+        # The category rewrite and the upload body are both assembled with jq.
+        # Without it we can't build the request, so skip the upload tolerantly
+        # (the SARIF was still generated; never fail the build).
+        if ! command -v jq >/dev/null 2>&1; then
+          warn "jq not available on the runner — skipping Code Scanning upload."
+          exit 0
+        fi
+
         # Upload via the REST API, tolerantly: a missing 'security-events:
         # write' permission (or any API error) WARNS and continues — it never
         # breaks the build.
