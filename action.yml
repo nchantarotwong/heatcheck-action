@@ -51,16 +51,30 @@ inputs:
     description: 'Code Scanning category (SARIF automationDetails.id) so heatcheck''s alerts coexist with other SAST tools instead of overwriting them. Default: "heatcheck".'
     default: 'heatcheck'
 
+  baseline-json:
+    description: |
+      Optional path to a previous heatcheck --json report. When set, the
+      action runs heatcheck --review-json and gates only findings absent from
+      that baseline. Existing baseline findings are summarized as warnings.
+    required: false
+    default: ''
+
 outputs:
   sarif-path:
     description: 'Path to the generated SARIF file on the runner (empty if upload-sarif is false or generation failed).'
     value: ${{ steps.sarif.outputs.path }}
   violations:
-    description: 'Number of violations found across all scanned files. "0" on clean run; "-1" on internal failure (no JSON produced).'
+    description: 'Number of violations found across all scanned files; in review mode, number of new findings. "0" on clean run; "-1" on internal failure (no JSON produced).'
     value: ${{ steps.run.outputs.violations }}
   json-path:
     description: 'Path to the raw JSON report on the runner filesystem.'
     value: ${{ steps.run.outputs.json }}
+  decision:
+    description: 'Review decision from --review-json: pass, warn, block, or error. Empty outside review mode.'
+    value: ${{ steps.run.outputs.decision }}
+  risk-score:
+    description: 'Review risk score from --review-json. Empty outside review mode.'
+    value: ${{ steps.run.outputs.risk-score }}
 
 runs:
   using: 'composite'
@@ -239,10 +253,13 @@ runs:
         HEATCHECK_FAIL: ${{ inputs.fail-on-violations }}
         HEATCHECK_UPLOAD: ${{ inputs.upload-report }}
         HEATCHECK_TIMEOUT: ${{ inputs.timeout-seconds }}
+        HEATCHECK_BASELINE_JSON: ${{ inputs.baseline-json }}
       run: |
         set -uo pipefail
         chmod +x "$HEATCHECK_BIN"
         echo "json=$HEATCHECK_JSON" >> "$GITHUB_OUTPUT"
+        echo "decision=" >> "$GITHUB_OUTPUT"
+        echo "risk-score=" >> "$GITHUB_OUTPUT"
 
         report_flag="--no-report"
         if [ "$HEATCHECK_UPLOAD" = "true" ]; then
@@ -259,11 +276,18 @@ runs:
         fi
 
         set +e
+        mode_args=(--json)
+        if [ -n "$HEATCHECK_BASELINE_JSON" ]; then
+          mode_args=(--review-json --baseline-json "$HEATCHECK_BASELINE_JSON")
+          # Review output is the report artifact for this mode; the scanner's
+          # HTML report is intentionally skipped to keep the output single-source.
+          report_flag="--no-report"
+        fi
         # shellcheck disable=SC2086
         if [ -n "$TIMEOUT_CMD" ]; then
-          "$TIMEOUT_CMD" "$HEATCHECK_TIMEOUT"s "$HEATCHECK_BIN" --json $report_flag $HEATCHECK_PATHS > "$HEATCHECK_JSON"
+          "$TIMEOUT_CMD" "$HEATCHECK_TIMEOUT"s "$HEATCHECK_BIN" "${mode_args[@]}" $report_flag $HEATCHECK_PATHS > "$HEATCHECK_JSON"
         else
-          "$HEATCHECK_BIN" --json $report_flag $HEATCHECK_PATHS > "$HEATCHECK_JSON"
+          "$HEATCHECK_BIN" "${mode_args[@]}" $report_flag $HEATCHECK_PATHS > "$HEATCHECK_JSON"
         fi
         rc=$?
         set -e
@@ -289,15 +313,24 @@ runs:
           exit 1
         fi
 
-        n=$(python -c '
-        import json, os
-        try:
-            with open(os.environ["HEATCHECK_JSON"]) as f:
-                print(len(json.load(f).get("violations", [])))
-        except Exception:
-            print("-1")
-        ' 2>/dev/null || echo "-1")
+        n=$(python -c 'import json, os; print(len(json.load(open(os.environ["HEATCHECK_JSON"], encoding="utf-8")).get("violations", [])))' 2>/dev/null || echo "-1")
         echo "violations=$n" >> "$GITHUB_OUTPUT"
+
+        if [ -n "$HEATCHECK_BASELINE_JSON" ]; then
+          decision=$(python -c 'import json, os; print(json.load(open(os.environ["HEATCHECK_JSON"], encoding="utf-8")).get("decision", ""))' 2>/dev/null || echo "error")
+          risk_score=$(python -c 'import json, os; print(json.load(open(os.environ["HEATCHECK_JSON"], encoding="utf-8")).get("risk_score", ""))' 2>/dev/null || true)
+          echo "decision=$decision" >> "$GITHUB_OUTPUT"
+          echo "risk-score=$risk_score" >> "$GITHUB_OUTPUT"
+        fi
+
+        if [ "$rc" = "3" ]; then
+          echo "::error::heatcheck could not fully analyze the requested inputs."
+          exit 1
+        fi
+        if [ "$n" = "-1" ]; then
+          echo "::error::heatcheck JSON output could not be parsed."
+          exit 1
+        fi
 
         if [ "$n" != "0" ] && [ "$n" != "-1" ] && [ "$HEATCHECK_FAIL" = "true" ]; then
           exit 1

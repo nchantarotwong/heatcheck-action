@@ -78,6 +78,7 @@ Violations show up as:
 | `timeout-seconds` | `600` | Per-run timeout for the heatcheck binary. |
 | `upload-sarif` | `true` | Upload results to GitHub Code Scanning (Security tab) as SARIF. Tolerant — without `security-events: write`, or on a fork PR, it warns and continues (never fails the build). |
 | `sarif-category` | `heatcheck` | Code Scanning category (SARIF `automationDetails.id`) so heatcheck's alerts coexist with other SAST tools instead of overwriting them. |
+| `baseline-json` | `''` | Optional path to a previous `heatcheck --json` report. When set, the action runs `--review-json` and fails only on findings absent from that baseline. |
 
 ## Outputs
 
@@ -86,6 +87,8 @@ Violations show up as:
 | `violations` | Number of violations across all scanned files. `-1` on internal failure (no JSON produced). |
 | `json-path` | Path to the raw JSON report on the runner filesystem. Use it in downstream steps that need to parse violations programmatically. |
 | `sarif-path` | Path to the generated SARIF file on the runner (empty if `upload-sarif` is `false` or generation failed). |
+| `decision` | Review decision from `--review-json`: `pass`, `warn`, `block`, or `error`. Empty unless `baseline-json` is set. |
+| `risk-score` | Review risk score from `--review-json`. Empty unless `baseline-json` is set. |
 
 The JSON report has `healthy` (bool), `files_analyzed`, `violations`,
 `parse_errors`, and `skipped` (Go inputs excluded from the active
@@ -94,6 +97,16 @@ build — build tag / cgo). **An empty `violations` array only means
 count: a run that failed to analyze inputs, or where every input was
 build-excluded, reports `healthy: false` with empty `violations`
 (and the action exits non-zero).
+
+`baseline-json` must point to a healthy `heatcheck --json` report.
+When it is set, `json-path` points to a review envelope
+instead: `decision`, `risk_score`, `new_findings`,
+`existing_findings`, `summary`, and `violations` containing only the
+new findings. `decision=block` fails the action when
+`fail-on-violations` is `true`; `decision=warn` means existing
+baseline findings remain but the PR introduced no new Heatcheck
+findings. `decision=error` always fails because the scan was not
+trustworthy.
 
 ## What heatcheck catches
 

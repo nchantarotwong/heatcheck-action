@@ -86,11 +86,28 @@ def write_summary(path: str, data: dict, workspace: str) -> None:
     violations = data.get("violations") or []
     parse_errors = data.get("parse_errors") or []
     files_analyzed = data.get("files_analyzed", 0)
+    decision = data.get("decision")
 
     lines: list[str] = []
     lines.append("## heatcheck")
     lines.append("")
-    if not violations and not parse_errors:
+    if isinstance(decision, str) and decision:
+        risk = data.get("risk_score", 0)
+        new_findings = data.get("new_findings", len(violations))
+        existing = data.get("existing_findings", 0)
+        summary = data.get("summary", "")
+        lines.append(f"Decision: **{decision}**")
+        lines.append("")
+        lines.append(f"Risk score: **{risk}**")
+        lines.append("")
+        lines.append(f"New findings: **{new_findings}**")
+        lines.append("")
+        lines.append(f"Existing baseline findings: **{existing}**")
+        lines.append("")
+        if summary:
+            lines.append(str(summary))
+            lines.append("")
+    elif not violations and not parse_errors:
         lines.append(
             f"No violations across **{files_analyzed}** Python file(s) scanned."
         )
